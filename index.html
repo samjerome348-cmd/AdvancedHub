@@ -105,6 +105,22 @@
         if (!error && data) setTrades(data);
       };
 
+      // Delete Function
+      const handleDeleteTrade = async (tradeId) => {
+        if (window.confirm("Are you sure you want to delete this trade execution?")) {
+          const { error } = await supabase
+            .from('trades')
+            .delete()
+            .eq('id', tradeId);
+
+          if (!error) {
+            fetchUserTrades(session.user.id);
+          } else {
+            alert("Error deleting trade: " + error.message);
+          }
+        }
+      };
+
       // Charting Logic
       React.useEffect(() => {
         if (activeTab === 'dashboard' && session && trades.length > 0) {
@@ -513,11 +529,12 @@
                       <th className="p-3">Setup</th>
                       <th className="p-3">Chart Log</th>
                       <th className="p-3 text-right">Return P&L</th>
+                      <th className="p-3 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {trades.length === 0 ? (
-                      <tr><td colSpan="10" className="p-8 text-center text-gray-500">No trades recorded yet. Log your first execution above!</td></tr>
+                      <tr><td colSpan="11" className="p-8 text-center text-gray-500">No trades recorded yet. Log your first execution above!</td></tr>
                     ) : (
                       trades.map(t => {
                         const isWin = Number(t.pnl) >= 0;
@@ -544,6 +561,15 @@
                             </td>
                             <td className={`p-3 text-right font-bold mono text-sm ${isWin ? 'neon-green' : 'neon-red'}`}>
                               ${t.pnl || '0.00'}
+                            </td>
+                            <td className="p-3 text-center">
+                              <button 
+                                onClick={() => handleDeleteTrade(t.id)} 
+                                className="text-xs text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 px-2 py-1 rounded transition-all font-mono"
+                                title="Delete execution"
+                              >
+                                🗑️
+                              </button>
                             </td>
                           </tr>
                         );
