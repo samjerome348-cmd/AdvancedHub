@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TradeSet // Mindset & Execution Journal</title>
+  <title>AdvancedHub // Mindset & Execution Journal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -17,7 +17,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const API_URL = "https://YOUR_RENDER_URL.onrender.com"; 
+    const API_URL = "https://advancedhub.onrender.com"; 
 
     function App() {
       const [activeTab, setActiveTab] = React.useState('dashboard');
@@ -45,15 +45,15 @@
       };
 
       return (
-        <div class="max-w-6xl mx-auto space-y-6">
-          <div class="flex justify-between items-center border-b border-gray-800 pb-4">
-            <h1 class="text-2xl font-bold neon-text">TRADESET // SYSTEM</h1>
-            <div class="flex gap-4 text-xs font-bold">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+            <h1 className="text-2xl font-bold neon-text">ADVANCEDHUB // SYSTEM</h1>
+            <div className="flex gap-4 text-xs font-bold">
               {['dashboard', 'behavioral', 'propfirm', 'journal'].map(tab => (
                 <button 
                   key={tab} 
                   onClick={() => setActiveTab(tab)}
-                  class={`px-3 py-1 rounded uppercase ${activeTab === tab ? 'bg-emerald-500 text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                  className={`px-3 py-1 rounded uppercase ${activeTab === tab ? 'bg-emerald-500 text-black font-bold' : 'text-gray-400 hover:text-white'}`}
                 >
                   {tab}
                 </button>
@@ -62,61 +62,61 @@
           </div>
 
           {activeTab === 'dashboard' && (
-            <div class="space-y-6">
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="glass-card p-4 rounded">
-                  <p class="text-xs text-gray-400">NET P&L</p>
-                  <h2 class="text-2xl font-bold neon-text">${stats.net_pnl}</h2>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="glass-card p-4 rounded">
+                  <p className="text-xs text-gray-400">NET P&L</p>
+                  <h2 className="text-2xl font-bold neon-text">${stats.net_pnl}</h2>
                 </div>
-                <div class="glass-card p-4 rounded">
-                  <p class="text-xs text-gray-400">WIN RATE</p>
-                  <h2 class="text-2xl font-bold neon-text">{stats.win_rate}%</h2>
+                <div className="glass-card p-4 rounded">
+                  <p className="text-xs text-gray-400">WIN RATE</p>
+                  <h2 className="text-2xl font-bold neon-text">{stats.win_rate}%</h2>
                 </div>
-                <div class="glass-card p-4 rounded">
-                  <p class="text-xs text-gray-400">TOTAL TRADES</p>
-                  <h2 class="text-2xl font-bold text-white">{stats.total_trades}</h2>
+                <div className="glass-card p-4 rounded">
+                  <p className="text-xs text-gray-400">TOTAL TRADES</p>
+                  <h2 className="text-2xl font-bold text-white">{stats.total_trades}</h2>
                 </div>
-                <div class="glass-card p-4 rounded">
-                  <p class="text-xs text-gray-400">EXIT DISCIPLINE</p>
-                  <h2 class="text-2xl font-bold text-white">{stats.exit_discipline}</h2>
+                <div className="glass-card p-4 rounded">
+                  <p className="text-xs text-gray-400">EXIT DISCIPLINE</p>
+                  <h2 className="text-2xl font-bold text-white">{stats.exit_discipline}</h2>
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} class="glass-card p-4 rounded flex gap-4 items-center">
-                <input type="text" placeholder="Symbol" value={formData.symbol} onChange={e => setFormData({...formData, symbol: e.target.value})} class="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white" required />
-                <input type="number" placeholder="P&L ($)" value={formData.pnl} onChange={e => setFormData({...formData, pnl: e.target.value})} class="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white" required />
-                <select value={formData.emotion} onChange={e => setFormData({...formData, emotion: e.target.value})} class="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white">
+              <form onSubmit={handleSubmit} className="glass-card p-4 rounded flex gap-4 items-center">
+                <input type="text" placeholder="Symbol" value={formData.symbol} onChange={e => setFormData({...formData, symbol: e.target.value})} className="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white" required />
+                <input type="number" placeholder="P&L ($)" value={formData.pnl} onChange={e => setFormData({...formData, pnl: e.target.value})} className="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white" required />
+                <select value={formData.emotion} onChange={e => setFormData({...formData, emotion: e.target.value})} className="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white">
                   <option value="Focus">Focus</option>
                   <option value="Anxiety">Anxiety</option>
                   <option value="Hesitation">Hesitation</option>
                   <option value="Anger">Anger</option>
                 </select>
-                <select value={formData.exit_discipline} onChange={e => setFormData({...formData, exit_discipline: e.target.value})} class="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white">
+                <select value={formData.exit_discipline} onChange={e => setFormData({...formData, exit_discipline: e.target.value})} className="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white">
                   <option value="As Planned">As Planned</option>
                   <option value="Too Early">Too Early</option>
                   <option value="Too Late">Too Late</option>
                 </select>
-                <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-black font-bold p-2 text-sm rounded w-1/5">LOG TRADE</button>
+                <button type="submit" className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold p-2 text-sm rounded w-1/5">LOG TRADE</button>
               </form>
 
-              <div class="glass-card p-6 rounded">
-                <h3 class="text-md font-bold text-gray-400 mb-4">LOGGED EXECUTION HISTORY</h3>
-                <table class="w-full text-left text-sm text-gray-300">
-                  <thead class="border-b border-gray-800 text-xs text-gray-500">
+              <div className="glass-card p-6 rounded">
+                <h3 className="text-md font-bold text-gray-400 mb-4">LOGGED EXECUTION HISTORY</h3>
+                <table className="w-full text-left text-sm text-gray-300">
+                  <thead className="border-b border-gray-800 text-xs text-gray-500">
                     <tr>
-                      <th class="p-2">SYMBOL</th>
-                      <th class="p-2">P&L ($)</th>
-                      <th class="p-2">EMOTION</th>
-                      <th class="p-2">EXIT DISCIPLINE</th>
+                      <th className="p-2">SYMBOL</th>
+                      <th className="p-2">P&L ($)</th>
+                      <th className="p-2">EMOTION</th>
+                      <th className="p-2">EXIT DISCIPLINE</th>
                     </tr>
                   </thead>
                   <tbody>
                     {trades.map(t => (
-                      <tr key={t.id} class="border-b border-gray-900">
-                        <td class="p-2">{t.symbol}</td>
-                        <td class={`p-2 ${Number(t.pnl) >= 0 ? 'neon-text' : 'text-red-500'}`}>${t.pnl}</td>
-                        <td class="p-2">{t.emotion}</td>
-                        <td class="p-2">{t.exit_discipline}</td>
+                      <tr key={t.id} className="border-b border-gray-900">
+                        <td className="p-2">{t.symbol}</td>
+                        <td className={`p-2 ${Number(t.pnl) >= 0 ? 'neon-text' : 'text-red-500'}`}>${t.pnl}</td>
+                        <td className="p-2">{t.emotion}</td>
+                        <td className="p-2">{t.exit_discipline}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -126,31 +126,31 @@
           )}
 
           {activeTab === 'behavioral' && (
-            <div class="glass-card p-6 rounded space-y-4">
-              <h3 class="text-lg font-bold neon-text">BEHAVIORAL EDGE SCORE™</h3>
-              <div class="grid grid-cols-3 gap-4 text-center">
-                <div class="p-4 bg-black border border-gray-800 rounded"><p class="text-xs text-gray-400">FOCUS</p><p class="text-2xl font-bold neon-text">85% Win Rate</p></div>
-                <div class="p-4 bg-black border border-gray-800 rounded"><p class="text-xs text-gray-400">ANXIETY</p><p class="text-2xl font-bold text-red-500">38% Win Rate</p></div>
-                <div class="p-4 bg-black border border-gray-800 rounded"><p class="text-xs text-gray-400">PLANNED EXITS</p><p class="text-2xl font-bold neon-text">92% Compliance</p></div>
+            <div className="glass-card p-6 rounded space-y-4">
+              <h3 className="text-lg font-bold neon-text">BEHAVIORAL EDGE SCORE™</h3>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">FOCUS</p><p className="text-2xl font-bold neon-text">85% Win Rate</p></div>
+                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">ANXIETY</p><p className="text-2xl font-bold text-red-500">38% Win Rate</p></div>
+                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">PLANNED EXITS</p><p className="text-2xl font-bold neon-text">92% Compliance</p></div>
               </div>
             </div>
           )}
 
           {activeTab === 'propfirm' && (
-            <div class="glass-card p-6 rounded space-y-4">
-              <h3 class="text-lg font-bold neon-text">PROP FIRM LEDGER</h3>
-              <div class="grid grid-cols-3 gap-4">
-                <div class="p-4 bg-black border border-gray-800 rounded"><p class="text-xs text-gray-400">CAPITAL</p><p class="text-xl font-bold text-white">$150,000</p></div>
-                <div class="p-4 bg-black border border-gray-800 rounded"><p class="text-xs text-gray-400">PAYOUTS</p><p class="text-xl font-bold neon-text">$4,250</p></div>
-                <div class="p-4 bg-black border border-gray-800 rounded"><p class="text-xs text-gray-400">ACCOUNTS</p><p class="text-xl font-bold text-white">2 Active</p></div>
+            <div className="glass-card p-6 rounded space-y-4">
+              <h3 className="text-lg font-bold neon-text">PROP FIRM LEDGER</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">CAPITAL</p><p className="text-xl font-bold text-white">$150,000</p></div>
+                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">PAYOUTS</p><p className="text-xl font-bold neon-text">$4,250</p></div>
+                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">ACCOUNTS</p><p className="text-xl font-bold text-white">2 Active</p></div>
               </div>
             </div>
           )}
 
           {activeTab === 'journal' && (
-            <div class="glass-card p-6 rounded space-y-4">
-              <h3 class="text-lg font-bold neon-text">JOURNAL</h3>
-              <textarea placeholder="Write session notes..." class="w-full h-32 bg-black border border-gray-800 p-3 text-sm text-white rounded"></textarea>
+            <div className="glass-card p-6 rounded space-y-4">
+              <h3 className="text-lg font-bold neon-text">JOURNAL</h3>
+              <textarea placeholder="Write session notes..." className="w-full h-32 bg-black border border-gray-800 p-3 text-sm text-white rounded"></textarea>
             </div>
           )}
         </div>
