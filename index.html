@@ -2,15 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AdvancedHub // Mindset & Execution Journal</title>
+  <title>AdvancedHub // Trading Terminal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    body { background-color: #000000; color: #ffffff; font-family: monospace; }
-    .neon-text { color: #00FF66; text-shadow: 0 0 8px rgba(0,255,102,0.4); }
-    .glass-card { background: #0A0A0A; border: 1px solid #1A1A1A; }
+    body { background-color: #0b0e14; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .neon-green { color: #00e676; }
+    .bg-neon-green { background-color: #00e676; }
+    .neon-red { color: #ff5252; }
+    .bg-neon-red { background-color: #ff5252; }
+    .glass-panel { background: #131822; border: 1px solid #1f293d; }
+    .input-field { background-color: #0b0e14; border: 1px solid #1f293d; color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; }
+    .input-field:focus { border-color: #00e676; outline: none; }
   </style>
 </head>
 <body class="p-6">
@@ -21,39 +26,97 @@
 
     function App() {
       const [activeTab, setActiveTab] = React.useState('dashboard');
-      const [stats, setStats] = React.useState({ net_pnl: 0, win_rate: 0, total_trades: 0, emotional_stability: 88, exit_discipline: '85%' });
       const [trades, setTrades] = React.useState([]);
-      const [formData, setFormData] = React.useState({ symbol: 'NQ', pnl: '', emotion: 'Focus', exit_discipline: 'As Planned', playbook_strategy: 'Breakout' });
+      
+      const [formData, setFormData] = React.useState({ 
+        date: new Date().toISOString().split('T')[0],
+        symbol: 'NQ', 
+        entry: '', 
+        exit: '', 
+        size: '', 
+        type: 'BUY', 
+        pnl: '', 
+        emotion: 'Focus', 
+        exit_discipline: 'As Planned' 
+      });
+
+      const [marketNotes, setMarketNotes] = React.useState(localStorage.getItem('market_notes') || '');
+      const [personalNotes, setPersonalNotes] = React.useState(localStorage.getItem('personal_notes') || '');
 
       const loadData = () => {
-        fetch(`${API_URL}/api/dashboard`).then(res => res.json()).then(data => setStats(data)).catch(() => {});
-        fetch(`${API_URL}/api/trades`).then(res => res.json()).then(data => setTrades(data)).catch(() => {});
+        fetch(`${API_URL}/api/trades`)
+          .then(res => res.json())
+          .then(data => setTrades(data))
+          .catch(() => {});
       };
 
       React.useEffect(() => { loadData(); }, []);
 
       const handleSubmit = (e) => {
         e.preventDefault();
+        
+        let calculatedPnl = formData.pnl;
+        if (!calculatedPnl && formData.entry && formData.exit && formData.size) {
+          const entry = parseFloat(formData.entry);
+          const exit = parseFloat(formData.exit);
+          const size = parseFloat(formData.size);
+          calculatedPnl = (formData.type === 'CALL' || formData.type === 'BUY') 
+            ? ((exit - entry) * size).toFixed(2) 
+            : ((entry - exit) * size).toFixed(2);
+        }
+
+        const newTrade = { ...formData, pnl: calculatedPnl || 0 };
+
         fetch(`${API_URL}/api/trades`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(newTrade)
         }).then(() => {
-          setFormData({ symbol: 'NQ', pnl: '', emotion: 'Focus', exit_discipline: 'As Planned', playbook_strategy: 'Breakout' });
+          setFormData({ 
+            date: new Date().toISOString().split('T')[0],
+            symbol: 'NQ', entry: '', exit: '', size: '', type: 'BUY', pnl: '', emotion: 'Focus', exit_discipline: 'As Planned' 
+          });
           loadData();
         });
       };
 
+      const totalPnl = trades.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
+      const wins = trades.filter(t => Number(t.pnl) > 0).length;
+      const losses = trades.filter(t => Number(t.pnl) < 0).length;
+      const winRate = trades.length > 0 ? Math.round((wins / trades.length) * 100) : 0;
+
+      // Behavioral Metrics Helper
+      const getEmotionMetrics = (emotionType) => {
+        const filtered = trades.filter(t => t.emotion === emotionType);
+        if (filtered.length === 0) return { count: 0, winRate: 0, netPnl: 0 };
+        const emotionWins = filtered.filter(t => Number(t.pnl) > 0).length;
+        const netPnl = filtered.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
+        return {
+          count: filtered.length,
+          winRate: Math.round((emotionWins / filtered.length) * 100),
+          netPnl: netPnl
+        };
+      };
+
       return (
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Top Header */}
           <div className="flex justify-between items-center border-b border-gray-800 pb-4">
-            <h1 className="text-2xl font-bold neon-text">ADVANCEDHUB // SYSTEM</h1>
-            <div className="flex gap-4 text-xs font-bold">
-              {['dashboard', 'behavioral', 'propfirm', 'journal'].map(tab => (
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-500/10 rounded-full border border-emerald-500/30">
+                <span className="text-xl">⚡</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-wide">ADVANCEDHUB</h1>
+                <p className="text-[10px] text-gray-500 tracking-widest uppercase">Execution & Mindset System</p>
+              </div>
+            </div>
+            <div className="flex gap-2 font-semibold text-xs">
+              {['dashboard', 'behavioral', 'journal'].map(tab => (
                 <button 
                   key={tab} 
                   onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-1 rounded uppercase ${activeTab === tab ? 'bg-emerald-500 text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+                  className={`px-4 py-2 rounded transition-all uppercase ${activeTab === tab ? 'bg-emerald-500 text-black font-bold shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white glass-panel'}`}
                 >
                   {tab}
                 </button>
@@ -61,96 +124,175 @@
             </div>
           </div>
 
+          {/* DASHBOARD TAB */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="glass-card p-4 rounded">
-                  <p className="text-xs text-gray-400">NET P&L</p>
-                  <h2 className="text-2xl font-bold neon-text">${stats.net_pnl}</h2>
-                </div>
-                <div className="glass-card p-4 rounded">
-                  <p className="text-xs text-gray-400">WIN RATE</p>
-                  <h2 className="text-2xl font-bold neon-text">{stats.win_rate}%</h2>
-                </div>
-                <div className="glass-card p-4 rounded">
-                  <p className="text-xs text-gray-400">TOTAL TRADES</p>
-                  <h2 className="text-2xl font-bold text-white">{stats.total_trades}</h2>
-                </div>
-                <div className="glass-card p-4 rounded">
-                  <p className="text-xs text-gray-400">EXIT DISCIPLINE</p>
-                  <h2 className="text-2xl font-bold text-white">{stats.exit_discipline}</h2>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="glass-card p-4 rounded flex gap-4 items-center">
-                <input type="text" placeholder="Symbol" value={formData.symbol} onChange={e => setFormData({...formData, symbol: e.target.value})} className="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white" required />
-                <input type="number" placeholder="P&L ($)" value={formData.pnl} onChange={e => setFormData({...formData, pnl: e.target.value})} className="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white" required />
-                <select value={formData.emotion} onChange={e => setFormData({...formData, emotion: e.target.value})} className="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white">
+              <form onSubmit={handleSubmit} className="glass-panel p-4 rounded-lg flex flex-wrap gap-3 items-center">
+                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="input-field" required />
+                <input type="text" placeholder="Symbol" value={formData.symbol} onChange={e => setFormData({...formData, symbol: e.target.value})} className="input-field w-20" required />
+                <input type="number" step="any" placeholder="Entry $" value={formData.entry} onChange={e => setFormData({...formData, entry: e.target.value})} className="input-field w-24" />
+                <input type="number" step="any" placeholder="Exit $" value={formData.exit} onChange={e => setFormData({...formData, exit: e.target.value})} className="input-field w-24" />
+                <input type="number" placeholder="Size" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} className="input-field w-20" />
+                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="input-field">
+                  <option value="BUY">BUY</option>
+                  <option value="SELL">SELL</option>
+                  <option value="CALL">CALL</option>
+                  <option value="PUT">PUT</option>
+                </select>
+                <input type="number" step="any" placeholder="P&L ($)" value={formData.pnl} onChange={e => setFormData({...formData, pnl: e.target.value})} className="input-field w-24" />
+                <select value={formData.emotion} onChange={e => setFormData({...formData, emotion: e.target.value})} className="input-field">
                   <option value="Focus">Focus</option>
                   <option value="Anxiety">Anxiety</option>
                   <option value="Hesitation">Hesitation</option>
-                  <option value="Anger">Anger</option>
                 </select>
-                <select value={formData.exit_discipline} onChange={e => setFormData({...formData, exit_discipline: e.target.value})} className="bg-black border border-gray-800 p-2 text-sm rounded w-1/5 text-white">
-                  <option value="As Planned">As Planned</option>
-                  <option value="Too Early">Too Early</option>
-                  <option value="Too Late">Too Late</option>
-                </select>
-                <button type="submit" className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold p-2 text-sm rounded w-1/5">LOG TRADE</button>
+                <button type="submit" className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-4 py-2 text-xs rounded transition-all ml-auto">LOG TRADE</button>
               </form>
 
-              <div className="glass-card p-6 rounded">
-                <h3 className="text-md font-bold text-gray-400 mb-4">LOGGED EXECUTION HISTORY</h3>
-                <table className="w-full text-left text-sm text-gray-300">
-                  <thead className="border-b border-gray-800 text-xs text-gray-500">
-                    <tr>
-                      <th className="p-2">SYMBOL</th>
-                      <th className="p-2">P&L ($)</th>
-                      <th className="p-2">EMOTION</th>
-                      <th className="p-2">EXIT DISCIPLINE</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trades.map(t => (
-                      <tr key={t.id} className="border-b border-gray-900">
-                        <td className="p-2">{t.symbol}</td>
-                        <td className={`p-2 ${Number(t.pnl) >= 0 ? 'neon-text' : 'text-red-500'}`}>${t.pnl}</td>
-                        <td className="p-2">{t.emotion}</td>
-                        <td className="p-2">{t.exit_discipline}</td>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-3 glass-panel rounded-lg p-4 overflow-x-auto">
+                  <table className="w-full text-left text-xs text-gray-300 border-collapse">
+                    <thead className="border-b border-gray-800 text-gray-400">
+                      <tr>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Entered</th>
+                        <th className="p-3">Symbol</th>
+                        <th className="p-3">Entry</th>
+                        <th className="p-3">Exit</th>
+                        <th className="p-3">Size</th>
+                        <th className="p-3">Type</th>
+                        <th className="p-3">Return $</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {trades.length === 0 ? (
+                        <tr><td colSpan="8" className="p-8 text-center text-gray-500">No trading data recorded yet. Log your first execution above!</td></tr>
+                      ) : (
+                        trades.map(t => {
+                          const isWin = Number(t.pnl) >= 0;
+                          return (
+                            <tr key={t.id} className="border-b border-gray-800/50 hover:bg-white/5">
+                              <td className="p-3">
+                                <span className={`px-2 py-1 rounded text-[10px] font-bold ${isWin ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                                  {isWin ? 'WIN' : 'LOSS'}
+                                </span>
+                              </td>
+                              <td className="p-3">{t.date || 'N/A'}</td>
+                              <td className="p-3 font-semibold text-white">{t.symbol}</td>
+                              <td className="p-3">${t.entry || '0'}</td>
+                              <td className="p-3">${t.exit || '0'}</td>
+                              <td className="p-3">{t.size || '0'}</td>
+                              <td className="p-3 text-gray-400">{t.type || 'BUY'}</td>
+                              <td className={`p-3 font-semibold ${isWin ? 'neon-green' : 'neon-red'}`}>
+                                ${t.pnl || '0.00'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="glass-panel p-4 rounded-lg flex flex-col justify-between space-y-4">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-800 pb-2">Successful Rate</h3>
+                  <div className="flex flex-col items-center justify-center py-4">
+                    <div className="text-4xl font-extrabold tracking-tight">{winRate}%</div>
+                    <div className="flex gap-4 text-xs mt-3">
+                      <span className="text-emerald-400 font-medium">● Wins: {wins}</span>
+                      <span className="text-red-400 font-medium">● Losses: {losses}</span>
+                    </div>
+                  </div>
+                  <div className="bg-black/40 p-3 rounded border border-gray-800">
+                    <p className="text-[10px] text-gray-500 uppercase">Total Net Return</p>
+                    <p className={`text-xl font-bold ${totalPnl >= 0 ? 'neon-green' : 'neon-red'}`}>${totalPnl.toFixed(2)}</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
+          {/* MINIMALISTIC BEHAVIORAL TAB */}
           {activeTab === 'behavioral' && (
-            <div className="glass-card p-6 rounded space-y-4">
-              <h3 className="text-lg font-bold neon-text">BEHAVIORAL EDGE SCORE™</h3>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">FOCUS</p><p className="text-2xl font-bold neon-text">85% Win Rate</p></div>
-                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">ANXIETY</p><p className="text-2xl font-bold text-red-500">38% Win Rate</p></div>
-                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">PLANNED EXITS</p><p className="text-2xl font-bold neon-text">92% Compliance</p></div>
+            <div className="space-y-6">
+              <div className="flex justify-between items-end border-b border-gray-800/80 pb-3">
+                <div>
+                  <h2 className="text-lg font-bold tracking-wide">Behavioral Edge Analytics</h2>
+                  <p className="text-xs text-gray-500">How psychological state impacts execution quality</p>
+                </div>
+                <span className="text-xs text-emerald-400 font-mono bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">
+                  {trades.length} Executions Analyzed
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  { title: 'Focus', key: 'Focus', color: 'emerald', border: 'border-emerald-500/30', text: 'text-emerald-400', bgBar: 'bg-emerald-500' },
+                  { title: 'Anxiety', key: 'Anxiety', color: 'red', border: 'border-red-500/30', text: 'text-red-400', bgBar: 'bg-red-500' },
+                  { title: 'Hesitation', key: 'Hesitation', color: 'yellow', border: 'border-yellow-500/30', text: 'text-yellow-400', bgBar: 'bg-yellow-500' }
+                ].map((item) => {
+                  const m = getEmotionMetrics(item.key);
+                  return (
+                    <div key={item.key} className={`glass-panel p-5 rounded-lg border ${item.border} space-y-4 hover:border-gray-700 transition-all`}>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold tracking-widest text-gray-400 uppercase">{item.title}</span>
+                        <span className="text-[10px] text-gray-500 bg-black/50 px-2 py-0.5 rounded">{m.count} Trades</span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-gray-400">Win Rate</span>
+                          <span className={`font-bold ${item.text}`}>{m.winRate}%</span>
+                        </div>
+                        <div className="w-full bg-black/60 rounded-full h-1.5 overflow-hidden">
+                          <div className={`h-full ${item.bgBar}`} style={{ width: `${m.winRate}%` }}></div>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-gray-800/60 flex justify-between items-center text-xs">
+                        <span className="text-gray-500">Net Impact</span>
+                        <span className={`font-mono font-bold ${m.netPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          ${m.netPnl.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {activeTab === 'propfirm' && (
-            <div className="glass-card p-6 rounded space-y-4">
-              <h3 className="text-lg font-bold neon-text">PROP FIRM LEDGER</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">CAPITAL</p><p className="text-xl font-bold text-white">$150,000</p></div>
-                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">PAYOUTS</p><p className="text-xl font-bold neon-text">$4,250</p></div>
-                <div className="p-4 bg-black border border-gray-800 rounded"><p className="text-xs text-gray-400">ACCOUNTS</p><p className="text-xl font-bold text-white">2 Active</p></div>
-              </div>
-            </div>
-          )}
-
+          {/* SPLIT JOURNAL TAB */}
           {activeTab === 'journal' && (
-            <div className="glass-card p-6 rounded space-y-4">
-              <h3 className="text-lg font-bold neon-text">JOURNAL</h3>
-              <textarea placeholder="Write session notes..." className="w-full h-32 bg-black border border-gray-800 p-3 text-sm text-white rounded"></textarea>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="glass-panel p-6 rounded-lg space-y-3">
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <h3 className="text-sm font-bold text-emerald-400 flex items-center gap-2">
+                    <span>📈</span> Market & Session Context
+                  </h3>
+                  <span className="text-[10px] text-gray-500 font-mono">LOCAL STORAGE</span>
+                </div>
+                <textarea 
+                  value={marketNotes} 
+                  onChange={e => { setMarketNotes(e.target.value); localStorage.setItem('market_notes', e.target.value); }} 
+                  placeholder="Record key market levels, setup invalidation points, key news releases..." 
+                  className="w-full h-72 bg-black/50 border border-gray-800/80 p-3 text-xs text-gray-200 rounded focus:border-emerald-500 focus:outline-none resize-none font-mono"
+                ></textarea>
+              </div>
+
+              <div className="glass-panel p-6 rounded-lg space-y-3">
+                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                  <h3 className="text-sm font-bold text-purple-400 flex items-center gap-2">
+                    <span>🧠</span> Personal Mindset & Reflections
+                  </h3>
+                  <span className="text-[10px] text-gray-500 font-mono">LOCAL STORAGE</span>
+                </div>
+                <textarea 
+                  value={personalNotes} 
+                  onChange={e => { setPersonalNotes(e.target.value); localStorage.setItem('personal_notes', e.target.value); }} 
+                  placeholder="Write personal thoughts, emotional reflections, fatigue levels, or non-market notes..." 
+                  className="w-full h-72 bg-black/50 border border-gray-800/80 p-3 text-xs text-gray-200 rounded focus:border-purple-500 focus:outline-none resize-none font-mono"
+                ></textarea>
+              </div>
             </div>
           )}
         </div>
