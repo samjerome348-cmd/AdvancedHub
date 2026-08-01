@@ -7,12 +7,13 @@
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Supabase JS Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { background-color: #0b0e14; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .neon-green { color: #00e676; }
     .bg-neon-green { background-color: #00e676; }
     .neon-red { color: #ff5252; }
-    .bg-neon-red { background-color: #ff5252; }
     .glass-panel { background: #131822; border: 1px solid #1f293d; }
     .input-field { background-color: #0b0e14; border: 1px solid #1f293d; color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; }
     .input-field:focus { border-color: #00e676; outline: none; }
@@ -22,39 +23,75 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const API_URL = "https://advancedhub.onrender.com"; 
+    const SUPABASE_URL = "https://uydgnqqmkmoemmyrorbg.supabase.co"; 
+    const SUPABASE_ANON_KEY = "sb_publishable_IaI9Dt8lIL2m2-cIrq9Gug_NdeWchok"; 
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     function App() {
+      const [session, setSession] = React.useState(null);
+      const [authMode, setAuthMode] = React.useState('login'); 
+      const [email, setEmail] = React.useState('');
+      const [password, setPassword] = React.useState('');
+      const [authError, setAuthError] = React.useState('');
+
       const [activeTab, setActiveTab] = React.useState('dashboard');
       const [trades, setTrades] = React.useState([]);
-      
       const [formData, setFormData] = React.useState({ 
         date: new Date().toISOString().split('T')[0],
-        symbol: 'NQ', 
-        entry: '', 
-        exit: '', 
-        size: '', 
-        type: 'BUY', 
-        pnl: '', 
-        emotion: 'Focus', 
-        exit_discipline: 'As Planned' 
+        symbol: 'NQ', entry: '', exit: '', size: '', type: 'BUY', pnl: '', emotion: 'Focus'
       });
 
       const [marketNotes, setMarketNotes] = React.useState(localStorage.getItem('market_notes') || '');
       const [personalNotes, setPersonalNotes] = React.useState(localStorage.getItem('personal_notes') || '');
 
-      const loadData = () => {
-        fetch(`${API_URL}/api/trades`)
-          .then(res => res.json())
-          .then(data => setTrades(data))
-          .catch(() => {});
+      React.useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          setSession(session);
+          if (session) fetchUserTrades(session.user.id);
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          setSession(session);
+          if (session) fetchUserTrades(session.user.id);
+        });
+
+        return () => subscription.unsubscribe();
+      }, []);
+
+      const fetchUserTrades = async (userId) => {
+        const { data, error } = await supabase
+          .from('trades')
+          .select('*')
+          .eq('user_id', userId)
+          .order('id', { ascending: false });
+
+        if (!error && data) setTrades(data);
       };
 
-      React.useEffect(() => { loadData(); }, []);
-
-      const handleSubmit = (e) => {
+      const handleAuth = async (e) => {
         e.preventDefault();
-        
+        setAuthError('');
+        if (authMode === 'login') {
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) setAuthError(error.message);
+        } else {
+          const { error } = await supabase.auth.signUp({ email, password });
+          if (error) setAuthError(error.message);
+          else alert("Account created! You can now log in.");
+        }
+      };
+
+      const handleLogout = async () => {
+        await supabase.auth.signOut();
+        setSession(null);
+        setTrades([]);
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!session) return;
+
         let calculatedPnl = formData.pnl;
         if (!calculatedPnl && formData.entry && formData.exit && formData.size) {
           const entry = parseFloat(formData.entry);
@@ -65,19 +102,28 @@
             : ((entry - exit) * size).toFixed(2);
         }
 
-        const newTrade = { ...formData, pnl: calculatedPnl || 0 };
+        const newTrade = { 
+          date: formData.date,
+          symbol: formData.symbol,
+          entry: formData.entry ? parseFloat(formData.entry) : null,
+          exit: formData.exit ? parseFloat(formData.exit) : null,
+          size: formData.size ? parseFloat(formData.size) : null,
+          type: formData.type,
+          pnl: parseFloat(calculatedPnl || 0),
+          emotion: formData.emotion,
+          user_id: session.user.id 
+        };
 
-        fetch(`${API_URL}/api/trades`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newTrade)
-        }).then(() => {
+        const { error } = await supabase.from('trades').insert([newTrade]);
+        if (!error) {
           setFormData({ 
             date: new Date().toISOString().split('T')[0],
-            symbol: 'NQ', entry: '', exit: '', size: '', type: 'BUY', pnl: '', emotion: 'Focus', exit_discipline: 'As Planned' 
+            symbol: 'NQ', entry: '', exit: '', size: '', type: 'BUY', pnl: '', emotion: 'Focus' 
           });
-          loadData();
-        });
+          fetchUserTrades(session.user.id);
+        } else {
+          alert("Error saving trade: " + error.message);
+        }
       };
 
       const totalPnl = trades.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
@@ -85,22 +131,59 @@
       const losses = trades.filter(t => Number(t.pnl) < 0).length;
       const winRate = trades.length > 0 ? Math.round((wins / trades.length) * 100) : 0;
 
-      // Behavioral Metrics Helper
-      const getEmotionMetrics = (emotionType) => {
-        const filtered = trades.filter(t => t.emotion === emotionType);
-        if (filtered.length === 0) return { count: 0, winRate: 0, netPnl: 0 };
-        const emotionWins = filtered.filter(t => Number(t.pnl) > 0).length;
-        const netPnl = filtered.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
-        return {
-          count: filtered.length,
-          winRate: Math.round((emotionWins / filtered.length) * 100),
-          netPnl: netPnl
-        };
-      };
+      // Authentication Screen
+      if (!session) {
+        return (
+          <div className="max-w-md mx-auto mt-20 glass-panel p-8 rounded-lg space-y-6">
+            <div className="text-center space-y-2">
+              <h1 className="text-2xl font-bold tracking-wide">ADVANCEDHUB</h1>
+              <p className="text-xs text-gray-500 uppercase">Private Trading Terminal Access</p>
+            </div>
 
+            <form onSubmit={handleAuth} className="space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Email</label>
+                <input 
+                  type="email" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)} 
+                  className="input-field w-full py-2" 
+                  required 
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Password</label>
+                <input 
+                  type="password" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  className="input-field w-full py-2" 
+                  required 
+                />
+              </div>
+
+              {authError && <p className="text-xs text-red-400 font-mono">{authError}</p>}
+
+              <button type="submit" className="w-full bg-emerald-500 text-black font-bold py-2 rounded text-xs hover:bg-emerald-400 transition-all">
+                {authMode === 'login' ? 'LOG IN' : 'CREATE ACCOUNT'}
+              </button>
+            </form>
+
+            <div className="text-center">
+              <button 
+                onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} 
+                className="text-xs text-gray-400 hover:text-white underline"
+              >
+                {authMode === 'login' ? "Don't have an account? Sign Up" : "Already have an account? Log In"}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // Logged-in View
       return (
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Top Header */}
           <div className="flex justify-between items-center border-b border-gray-800 pb-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-emerald-500/10 rounded-full border border-emerald-500/30">
@@ -108,19 +191,24 @@
               </div>
               <div>
                 <h1 className="text-xl font-bold tracking-wide">ADVANCEDHUB</h1>
-                <p className="text-[10px] text-gray-500 tracking-widest uppercase">Execution & Mindset System</p>
+                <p className="text-[10px] text-gray-500 tracking-widest uppercase">Logged in as {session.user.email}</p>
               </div>
             </div>
-            <div className="flex gap-2 font-semibold text-xs">
-              {['dashboard', 'behavioral', 'journal'].map(tab => (
-                <button 
-                  key={tab} 
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded transition-all uppercase ${activeTab === tab ? 'bg-emerald-500 text-black font-bold shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white glass-panel'}`}
-                >
-                  {tab}
-                </button>
-              ))}
+            <div className="flex items-center gap-4">
+              <div className="flex gap-2 font-semibold text-xs">
+                {['dashboard', 'behavioral', 'journal'].map(tab => (
+                  <button 
+                    key={tab} 
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 rounded transition-all uppercase ${activeTab === tab ? 'bg-emerald-500 text-black font-bold shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white glass-panel'}`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+              <button onClick={handleLogout} className="text-xs text-red-400 border border-red-500/30 px-3 py-2 rounded hover:bg-red-500/10">
+                LOGOUT
+              </button>
             </div>
           </div>
 
@@ -165,7 +253,7 @@
                     </thead>
                     <tbody>
                       {trades.length === 0 ? (
-                        <tr><td colSpan="8" className="p-8 text-center text-gray-500">No trading data recorded yet. Log your first execution above!</td></tr>
+                        <tr><td colSpan="8" className="p-8 text-center text-gray-500">No trades recorded yet. Log your first execution above!</td></tr>
                       ) : (
                         trades.map(t => {
                           const isWin = Number(t.pnl) >= 0;
@@ -194,9 +282,9 @@
                 </div>
 
                 <div className="glass-panel p-4 rounded-lg flex flex-col justify-between space-y-4">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-800 pb-2">Successful Rate</h3>
+                  <h3 className="text-xs font-bold text-gray-400 uppercase border-b border-gray-800 pb-2">Successful Rate</h3>
                   <div className="flex flex-col items-center justify-center py-4">
-                    <div className="text-4xl font-extrabold tracking-tight">{winRate}%</div>
+                    <div className="text-4xl font-extrabold">{winRate}%</div>
                     <div className="flex gap-4 text-xs mt-3">
                       <span className="text-emerald-400 font-medium">● Wins: {wins}</span>
                       <span className="text-red-400 font-medium">● Losses: {losses}</span>
@@ -211,47 +299,37 @@
             </div>
           )}
 
-          {/* MINIMALISTIC BEHAVIORAL TAB */}
+          {/* BEHAVIORAL TAB */}
           {activeTab === 'behavioral' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-end border-b border-gray-800/80 pb-3">
-                <div>
-                  <h2 className="text-lg font-bold tracking-wide">Behavioral Edge Analytics</h2>
-                  <p className="text-xs text-gray-500">How psychological state impacts execution quality</p>
-                </div>
-                <span className="text-xs text-emerald-400 font-mono bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">
-                  {trades.length} Executions Analyzed
-                </span>
-              </div>
-
+              <h2 className="text-lg font-bold tracking-wide border-b border-gray-800 pb-3">Behavioral Edge Analytics</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  { title: 'Focus', key: 'Focus', color: 'emerald', border: 'border-emerald-500/30', text: 'text-emerald-400', bgBar: 'bg-emerald-500' },
-                  { title: 'Anxiety', key: 'Anxiety', color: 'red', border: 'border-red-500/30', text: 'text-red-400', bgBar: 'bg-red-500' },
-                  { title: 'Hesitation', key: 'Hesitation', color: 'yellow', border: 'border-yellow-500/30', text: 'text-yellow-400', bgBar: 'bg-yellow-500' }
-                ].map((item) => {
-                  const m = getEmotionMetrics(item.key);
-                  return (
-                    <div key={item.key} className={`glass-panel p-5 rounded-lg border ${item.border} space-y-4 hover:border-gray-700 transition-all`}>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold tracking-widest text-gray-400 uppercase">{item.title}</span>
-                        <span className="text-[10px] text-gray-500 bg-black/50 px-2 py-0.5 rounded">{m.count} Trades</span>
-                      </div>
+                {['Focus', 'Anxiety', 'Hesitation'].map((emotionKey) => {
+                  const filtered = trades.filter(t => t.emotion === emotionKey);
+                  const count = filtered.length;
+                  const emotionWins = filtered.filter(t => Number(t.pnl) > 0).length;
+                  const emotionWinRate = count > 0 ? Math.round((emotionWins / count) * 100) : 0;
+                  const netPnl = filtered.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
 
+                  return (
+                    <div key={emotionKey} className="glass-panel p-5 rounded-lg space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold tracking-widest text-gray-400 uppercase">{emotionKey}</span>
+                        <span className="text-[10px] text-gray-500 bg-black/50 px-2 py-0.5 rounded">{count} Trades</span>
+                      </div>
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs">
                           <span className="text-gray-400">Win Rate</span>
-                          <span className={`font-bold ${item.text}`}>{m.winRate}%</span>
+                          <span className="font-bold text-emerald-400">{emotionWinRate}%</span>
                         </div>
                         <div className="w-full bg-black/60 rounded-full h-1.5 overflow-hidden">
-                          <div className={`h-full ${item.bgBar}`} style={{ width: `${m.winRate}%` }}></div>
+                          <div className="h-full bg-emerald-500" style={{ width: `${emotionWinRate}%` }}></div>
                         </div>
                       </div>
-
-                      <div className="pt-2 border-t border-gray-800/60 flex justify-between items-center text-xs">
+                      <div className="pt-2 border-t border-gray-800 flex justify-between items-center text-xs">
                         <span className="text-gray-500">Net Impact</span>
-                        <span className={`font-mono font-bold ${m.netPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          ${m.netPnl.toFixed(2)}
+                        <span className={`font-mono font-bold ${netPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          ${netPnl.toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -265,32 +343,22 @@
           {activeTab === 'journal' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="glass-panel p-6 rounded-lg space-y-3">
-                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
-                  <h3 className="text-sm font-bold text-emerald-400 flex items-center gap-2">
-                    <span>📈</span> Market & Session Context
-                  </h3>
-                  <span className="text-[10px] text-gray-500 font-mono">LOCAL STORAGE</span>
-                </div>
+                <h3 className="text-sm font-bold text-emerald-400 border-b border-gray-800 pb-2">📈 Market & Session Context</h3>
                 <textarea 
                   value={marketNotes} 
                   onChange={e => { setMarketNotes(e.target.value); localStorage.setItem('market_notes', e.target.value); }} 
                   placeholder="Record key market levels, setup invalidation points, key news releases..." 
-                  className="w-full h-72 bg-black/50 border border-gray-800/80 p-3 text-xs text-gray-200 rounded focus:border-emerald-500 focus:outline-none resize-none font-mono"
+                  className="w-full h-72 bg-black/50 border border-gray-800 p-3 text-xs text-gray-200 rounded focus:border-emerald-500 focus:outline-none resize-none font-mono"
                 ></textarea>
               </div>
 
               <div className="glass-panel p-6 rounded-lg space-y-3">
-                <div className="flex justify-between items-center border-b border-gray-800 pb-2">
-                  <h3 className="text-sm font-bold text-purple-400 flex items-center gap-2">
-                    <span>🧠</span> Personal Mindset & Reflections
-                  </h3>
-                  <span className="text-[10px] text-gray-500 font-mono">LOCAL STORAGE</span>
-                </div>
+                <h3 className="text-sm font-bold text-purple-400 border-b border-gray-800 pb-2">🧠 Personal Mindset & Reflections</h3>
                 <textarea 
                   value={personalNotes} 
                   onChange={e => { setPersonalNotes(e.target.value); localStorage.setItem('personal_notes', e.target.value); }} 
                   placeholder="Write personal thoughts, emotional reflections, fatigue levels, or non-market notes..." 
-                  className="w-full h-72 bg-black/50 border border-gray-800/80 p-3 text-xs text-gray-200 rounded focus:border-purple-500 focus:outline-none resize-none font-mono"
+                  className="w-full h-72 bg-black/50 border border-gray-800 p-3 text-xs text-gray-200 rounded focus:border-purple-500 focus:outline-none resize-none font-mono"
                 ></textarea>
               </div>
             </div>
