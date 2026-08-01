@@ -2,24 +2,53 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AdvancedHub // Trading Terminal</title>
+  <title>ADVANCEDHUB // Elite Trading Terminal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Supabase JS Client Library -->
+  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Chart.js for Visual Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { background-color: #0b0e14; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .neon-green { color: #00e676; }
-    .bg-neon-green { background-color: #00e676; }
-    .neon-red { color: #ff5252; }
-    .glass-panel { background: #131822; border: 1px solid #1f293d; }
-    .input-field { background-color: #0b0e14; border: 1px solid #1f293d; color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; }
-    .input-field:focus { border-color: #00e676; outline: none; }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@300;400;600;700;900&display=swap');
+    
+    body { 
+      background: radial-gradient(circle at top right, #0d1322, #06080e); 
+      color: #e2e8f0; 
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .neon-green { color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.3); }
+    .neon-red { color: #ff3366; text-shadow: 0 0 10px rgba(255,51,102,0.3); }
+    .glass-card { 
+      background: linear-gradient(135deg, rgba(18, 24, 38, 0.85), rgba(10, 14, 23, 0.95)); 
+      border: 1px solid rgba(255, 255, 255, 0.08); 
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    .glass-card:hover { border-color: rgba(0, 255, 136, 0.2); }
+    .input-field { 
+      background-color: rgba(6, 8, 14, 0.8); 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
+      color: white; 
+      padding: 8px 12px; 
+      border-radius: 6px; 
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+    .input-field:focus { border-color: #00ff88; outline: none; box-shadow: 0 0 8px rgba(0,255,136,0.3); }
+    .glow-btn {
+      background: linear-gradient(135deg, #00ff88, #00b862);
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+      transition: all 0.2s ease;
+    }
+    .glow-btn:hover { box-shadow: 0 0 25px rgba(0, 255, 136, 0.7); transform: translateY(-1px); }
   </style>
 </head>
-<body class="p-6">
+<body class="p-4 md:p-8">
   <div id="root"></div>
 
   <script type="text/babel">
@@ -37,13 +66,20 @@
 
       const [activeTab, setActiveTab] = React.useState('dashboard');
       const [trades, setTrades] = React.useState([]);
+
       const [formData, setFormData] = React.useState({ 
         date: new Date().toISOString().split('T')[0],
-        symbol: 'NQ', entry: '', exit: '', size: '', type: 'BUY', pnl: '', emotion: 'Focus'
+        symbol: 'NQ', assetClass: 'Futures', entry: '', exit: '', size: '', type: 'BUY', 
+        pnl: '', setup: 'Break & Retest', emotion: 'Focus', mistake: 'None', chartUrl: ''
       });
 
       const [marketNotes, setMarketNotes] = React.useState(localStorage.getItem('market_notes') || '');
       const [personalNotes, setPersonalNotes] = React.useState(localStorage.getItem('personal_notes') || '');
+
+      const winLossChartRef = React.useRef(null);
+      const equityChartRef = React.useRef(null);
+      const winLossChartInstance = React.useRef(null);
+      const equityChartInstance = React.useRef(null);
 
       React.useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -64,10 +100,70 @@
           .from('trades')
           .select('*')
           .eq('user_id', userId)
-          .order('id', { ascending: false });
+          .order('id', { ascending: true });
 
         if (!error && data) setTrades(data);
       };
+
+      // Charting Logic
+      React.useEffect(() => {
+        if (activeTab === 'dashboard' && session && trades.length > 0) {
+          // Win/Loss Doughnut
+          if (winLossChartRef.current) {
+            if (winLossChartInstance.current) winLossChartInstance.current.destroy();
+            const wins = trades.filter(t => Number(t.pnl) > 0).length;
+            const losses = trades.filter(t => Number(t.pnl) < 0).length;
+            const breakevens = trades.filter(t => Number(t.pnl) === 0).length;
+
+            winLossChartInstance.current = new Chart(winLossChartRef.current, {
+              type: 'doughnut',
+              data: {
+                labels: ['Wins', 'Losses', 'Breakeven'],
+                datasets: [{
+                  data: [wins, losses, breakevens],
+                  backgroundColor: ['#00ff88', '#ff3366', '#64748b'],
+                  borderWidth: 0
+                }]
+              },
+              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } }
+            });
+          }
+
+          // Cumulative Equity Curve
+          if (equityChartRef.current) {
+            if (equityChartInstance.current) equityChartInstance.current.destroy();
+            let runningTotal = 0;
+            const equityData = trades.map(t => {
+              runningTotal += Number(t.pnl || 0);
+              return runningTotal;
+            });
+
+            equityChartInstance.current = new Chart(equityChartRef.current, {
+              type: 'line',
+              data: {
+                labels: trades.map((_, i) => `#${i + 1}`),
+                datasets: [{
+                  label: 'Cumulative P&L ($)',
+                  data: equityData,
+                  borderColor: '#00ff88',
+                  backgroundColor: 'rgba(0, 255, 136, 0.05)',
+                  fill: true,
+                  tension: 0.3
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                  y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                },
+                plugins: { legend: { display: false } }
+              }
+            });
+          }
+        }
+      }, [trades, activeTab, session]);
 
       const handleAuth = async (e) => {
         e.preventDefault();
@@ -78,7 +174,7 @@
         } else {
           const { error } = await supabase.auth.signUp({ email, password });
           if (error) setAuthError(error.message);
-          else alert("Account created! You can now log in.");
+          else alert("Account created! Check your inbox or log in.");
         }
       };
 
@@ -118,7 +214,8 @@
         if (!error) {
           setFormData({ 
             date: new Date().toISOString().split('T')[0],
-            symbol: 'NQ', entry: '', exit: '', size: '', type: 'BUY', pnl: '', emotion: 'Focus' 
+            symbol: 'NQ', assetClass: 'Futures', entry: '', exit: '', size: '', type: 'BUY', 
+            pnl: '', setup: 'Break & Retest', emotion: 'Focus', mistake: 'None', chartUrl: ''
           });
           fetchUserTrades(session.user.id);
         } else {
@@ -126,88 +223,117 @@
         }
       };
 
+      // Financial Analytics
       const totalPnl = trades.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
-      const wins = trades.filter(t => Number(t.pnl) > 0).length;
-      const losses = trades.filter(t => Number(t.pnl) < 0).length;
-      const winRate = trades.length > 0 ? Math.round((wins / trades.length) * 100) : 0;
+      const winsList = trades.filter(t => Number(t.pnl) > 0);
+      const lossesList = trades.filter(t => Number(t.pnl) < 0);
+      
+      const totalWinDollar = winsList.reduce((acc, t) => acc + Number(t.pnl), 0);
+      const totalLossDollar = Math.abs(lossesList.reduce((acc, t) => acc + Number(t.pnl), 0));
 
-      // Authentication Screen
+      const profitFactor = totalLossDollar > 0 ? (totalWinDollar / totalLossDollar).toFixed(2) : totalWinDollar > 0 ? '∞' : '0.00';
+      const avgWin = winsList.length > 0 ? (totalWinDollar / winsList.length).toFixed(2) : '0.00';
+      const avgLoss = lossesList.length > 0 ? (totalLossDollar / lossesList.length).toFixed(2) : '0.00';
+      const winRate = trades.length > 0 ? Math.round((winsList.length / trades.length) * 100) : 0;
+
+      let peak = 0;
+      let maxDrawdown = 0;
+      let curPnl = 0;
+      trades.forEach(t => {
+        curPnl += Number(t.pnl || 0);
+        if (curPnl > peak) peak = curPnl;
+        const dd = peak - curPnl;
+        if (dd > maxDrawdown) maxDrawdown = dd;
+      });
+
+      // Login Screen
       if (!session) {
         return (
-          <div className="max-w-md mx-auto mt-20 glass-panel p-8 rounded-lg space-y-6">
+          <div className="max-w-md mx-auto mt-16 glass-card p-8 rounded-2xl border border-emerald-500/20 space-y-6">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-bold tracking-wide">ADVANCEDHUB</h1>
-              <p className="text-xs text-gray-500 uppercase">Private Trading Terminal Access</p>
+              <div className="inline-block p-3 bg-emerald-500/10 rounded-full border border-emerald-500/30 mb-2">
+                <span className="text-3xl">⚡</span>
+              </div>
+              <h1 className="text-3xl font-black tracking-wider text-white">ADVANCED<span className="neon-green">HUB</span></h1>
+              <p className="text-xs text-gray-400 tracking-widest uppercase">Institutional Performance Terminal</p>
             </div>
 
             <form onSubmit={handleAuth} className="space-y-4">
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Email</label>
+                <label className="text-xs text-gray-400 font-semibold block mb-1">TRADER EMAIL</label>
                 <input 
                   type="email" 
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
-                  className="input-field w-full py-2" 
+                  className="input-field w-full py-2.5" 
+                  placeholder="trader@terminal.com"
                   required 
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Password</label>
+                <label className="text-xs text-gray-400 font-semibold block mb-1">PASSWORD</label>
                 <input 
                   type="password" 
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
-                  className="input-field w-full py-2" 
+                  className="input-field w-full py-2.5" 
+                  placeholder="••••••••••••"
                   required 
                 />
               </div>
 
-              {authError && <p className="text-xs text-red-400 font-mono">{authError}</p>}
+              {authError && <p className="text-xs text-red-400 font-mono bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>}
 
-              <button type="submit" className="w-full bg-emerald-500 text-black font-bold py-2 rounded text-xs hover:bg-emerald-400 transition-all">
-                {authMode === 'login' ? 'LOG IN' : 'CREATE ACCOUNT'}
+              <button type="submit" className="w-full glow-btn text-black font-extrabold py-3 rounded-lg text-xs tracking-wider uppercase mt-2">
+                {authMode === 'login' ? 'ACCESS TERMINAL' : 'INITIALIZE ACCOUNT'}
               </button>
             </form>
 
-            <div className="text-center">
+            <div className="text-center pt-2">
               <button 
                 onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} 
-                className="text-xs text-gray-400 hover:text-white underline"
+                className="text-xs text-gray-400 hover:text-emerald-400 transition-all underline"
               >
-                {authMode === 'login' ? "Don't have an account? Sign Up" : "Already have an account? Log In"}
+                {authMode === 'login' ? "New Trader? Create Account" : "Registered? Log In"}
               </button>
             </div>
           </div>
         );
       }
 
-      // Logged-in View
+      // Main Terminal View
       return (
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+        <div className="max-w-[1400px] mx-auto space-y-6">
+          {/* Header */}
+          <div className="glass-card p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-500/10 rounded-full border border-emerald-500/30">
-                <span className="text-xl">⚡</span>
+              <div className="p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                <span className="text-2xl">⚡</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-wide">ADVANCEDHUB</h1>
-                <p className="text-[10px] text-gray-500 tracking-widest uppercase">Logged in as {session.user.email}</p>
+                <h1 className="text-2xl font-black tracking-wider text-white">ADVANCED<span className="neon-green">HUB</span></h1>
+                <p className="text-[10px] text-gray-400 tracking-widest uppercase flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  CONNECTED // {session.user.email}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex gap-2 font-semibold text-xs">
+
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1.5 bg-black/40 p-1 rounded-lg border border-gray-800">
                 {['dashboard', 'behavioral', 'journal'].map(tab => (
                   <button 
                     key={tab} 
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 rounded transition-all uppercase ${activeTab === tab ? 'bg-emerald-500 text-black font-bold shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white glass-panel'}`}
+                    className={`px-4 py-2 rounded-md transition-all text-xs font-bold uppercase tracking-wide ${activeTab === tab ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
                   >
                     {tab}
                   </button>
                 ))}
               </div>
-              <button onClick={handleLogout} className="text-xs text-red-400 border border-red-500/30 px-3 py-2 rounded hover:bg-red-500/10">
-                LOGOUT
+
+              <button onClick={handleLogout} className="text-xs text-red-400 hover:text-red-300 border border-red-500/30 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-all font-semibold">
+                EXIT
               </button>
             </div>
           </div>
@@ -215,86 +341,216 @@
           {/* DASHBOARD TAB */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              <form onSubmit={handleSubmit} className="glass-panel p-4 rounded-lg flex flex-wrap gap-3 items-center">
-                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="input-field" required />
-                <input type="text" placeholder="Symbol" value={formData.symbol} onChange={e => setFormData({...formData, symbol: e.target.value})} className="input-field w-20" required />
-                <input type="number" step="any" placeholder="Entry $" value={formData.entry} onChange={e => setFormData({...formData, entry: e.target.value})} className="input-field w-24" />
-                <input type="number" step="any" placeholder="Exit $" value={formData.exit} onChange={e => setFormData({...formData, exit: e.target.value})} className="input-field w-24" />
-                <input type="number" placeholder="Size" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} className="input-field w-20" />
-                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="input-field">
-                  <option value="BUY">BUY</option>
-                  <option value="SELL">SELL</option>
-                  <option value="CALL">CALL</option>
-                  <option value="PUT">PUT</option>
-                </select>
-                <input type="number" step="any" placeholder="P&L ($)" value={formData.pnl} onChange={e => setFormData({...formData, pnl: e.target.value})} className="input-field w-24" />
-                <select value={formData.emotion} onChange={e => setFormData({...formData, emotion: e.target.value})} className="input-field">
-                  <option value="Focus">Focus</option>
-                  <option value="Anxiety">Anxiety</option>
-                  <option value="Hesitation">Hesitation</option>
-                </select>
-                <button type="submit" className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-4 py-2 text-xs rounded transition-all ml-auto">LOG TRADE</button>
+              
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-emerald-400">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Net Realized P&L</p>
+                  <p className={`text-xl font-extrabold mono mt-1 ${totalPnl >= 0 ? 'neon-green' : 'neon-red'}`}>
+                    ${totalPnl.toFixed(2)}
+                  </p>
+                </div>
+                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-emerald-500">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Win Rate</p>
+                  <p className="text-xl font-extrabold text-white mono mt-1">{winRate}%</p>
+                </div>
+                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-blue-500">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Profit Factor</p>
+                  <p className="text-xl font-extrabold text-blue-400 mono mt-1">{profitFactor}</p>
+                </div>
+                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-purple-500">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Avg Win / Avg Loss</p>
+                  <p className="text-sm font-bold text-white mono mt-1">
+                    <span className="neon-green">${avgWin}</span> / <span className="neon-red">${avgLoss}</span>
+                  </p>
+                </div>
+                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-red-500">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Max Drawdown</p>
+                  <p className="text-xl font-extrabold neon-red mono mt-1">-${maxDrawdown.toFixed(2)}</p>
+                </div>
+                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-yellow-500">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Total Sample</p>
+                  <p className="text-xl font-extrabold text-yellow-400 mono mt-1">{trades.length} Trades</p>
+                </div>
+              </div>
+
+              {/* Graphs Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="glass-card p-5 rounded-xl lg:col-span-2 flex flex-col justify-between">
+                  <div className="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                    <h3 className="text-xs font-extrabold tracking-widest text-emerald-400 uppercase flex items-center gap-2">
+                      📈 Cumulative Equity Growth Curve
+                    </h3>
+                    <span className="text-[10px] text-gray-500 mono">Real-time Performance trajectory</span>
+                  </div>
+                  <div className="h-64 relative w-full">
+                    {trades.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-gray-600 text-xs">No trade data logged yet</div>
+                    ) : (
+                      <canvas ref={equityChartRef}></canvas>
+                    )}
+                  </div>
+                </div>
+
+                <div className="glass-card p-5 rounded-xl flex flex-col justify-between">
+                  <div className="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                    <h3 className="text-xs font-extrabold tracking-widest text-purple-400 uppercase">
+                      🎯 Win / Loss Ratio Chart
+                    </h3>
+                  </div>
+                  <div className="h-64 relative w-full flex items-center justify-center">
+                    {trades.length === 0 ? (
+                      <div className="text-gray-600 text-xs">No trades logged</div>
+                    ) : (
+                      <canvas ref={winLossChartRef}></canvas>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Log Form */}
+              <form onSubmit={handleSubmit} className="glass-card p-5 rounded-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+                  <h3 className="text-xs font-extrabold tracking-widest text-emerald-400 uppercase flex items-center gap-2">
+                    <span>⚡</span> Manual Execution Entry
+                  </h3>
+                  <span className="text-[10px] font-semibold text-gray-500 uppercase">Custom Tags & Multi-Asset Support</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Date</label>
+                    <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="input-field w-full" required />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Asset Class</label>
+                    <select value={formData.assetClass} onChange={e => setFormData({...formData, assetClass: e.target.value})} className="input-field w-full">
+                      <option value="Futures">Futures</option>
+                      <option value="Forex">Forex</option>
+                      <option value="Crypto">Crypto</option>
+                      <option value="Stocks">Stocks</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Symbol</label>
+                    <input type="text" placeholder="NQ, EURUSD, BTC" value={formData.symbol} onChange={e => setFormData({...formData, symbol: e.target.value})} className="input-field w-full uppercase" required />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Entry Price</label>
+                    <input type="number" step="any" placeholder="0.00" value={formData.entry} onChange={e => setFormData({...formData, entry: e.target.value})} className="input-field w-full" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Exit Price</label>
+                    <input type="number" step="any" placeholder="0.00" value={formData.exit} onChange={e => setFormData({...formData, exit: e.target.value})} className="input-field w-full" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Position Size</label>
+                    <input type="number" step="any" placeholder="Lots / Contracts" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} className="input-field w-full" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Direction</label>
+                    <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="input-field w-full font-bold">
+                      <option value="BUY">BUY / LONG</option>
+                      <option value="SELL">SELL / SHORT</option>
+                      <option value="CALL">CALL</option>
+                      <option value="PUT">PUT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Net Return ($)</label>
+                    <input type="number" step="any" placeholder="Auto or Manual $" value={formData.pnl} onChange={e => setFormData({...formData, pnl: e.target.value})} className="input-field w-full font-bold" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Setup Tag</label>
+                    <select value={formData.setup} onChange={e => setFormData({...formData, setup: e.target.value})} className="input-field w-full">
+                      <option value="Break & Retest">Break & Retest</option>
+                      <option value="Liquidity Sweep">Liquidity Sweep</option>
+                      <option value="Fair Value Gap">Fair Value Gap</option>
+                      <option value="Trend Continuation">Trend Continuation</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Mistake Tag</label>
+                    <select value={formData.mistake} onChange={e => setFormData({...formData, mistake: e.target.value})} className="input-field w-full text-red-400">
+                      <option value="None">None (Disciplined)</option>
+                      <option value="FOMO Entry">FOMO Entry</option>
+                      <option value="Moved Stop Loss">Moved Stop Loss</option>
+                      <option value="Over-Leveraged">Over-Leveraged</option>
+                      <option value="Revenge Trade">Revenge Trade</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Chart Image URL</label>
+                    <input type="url" placeholder="https://tradingview.com/x/..." value={formData.chartUrl} onChange={e => setFormData({...formData, chartUrl: e.target.value})} className="input-field w-full" />
+                  </div>
+                  <div className="flex items-end">
+                    <button type="submit" className="glow-btn text-black font-extrabold w-full py-2 rounded-lg text-xs tracking-wider uppercase">
+                      + RECORD TRADE
+                    </button>
+                  </div>
+                </div>
               </form>
 
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div className="lg:col-span-3 glass-panel rounded-lg p-4 overflow-x-auto">
-                  <table className="w-full text-left text-xs text-gray-300 border-collapse">
-                    <thead className="border-b border-gray-800 text-gray-400">
-                      <tr>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Entered</th>
-                        <th className="p-3">Symbol</th>
-                        <th className="p-3">Entry</th>
-                        <th className="p-3">Exit</th>
-                        <th className="p-3">Size</th>
-                        <th className="p-3">Type</th>
-                        <th className="p-3">Return $</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {trades.length === 0 ? (
-                        <tr><td colSpan="8" className="p-8 text-center text-gray-500">No trades recorded yet. Log your first execution above!</td></tr>
-                      ) : (
-                        trades.map(t => {
-                          const isWin = Number(t.pnl) >= 0;
-                          return (
-                            <tr key={t.id} className="border-b border-gray-800/50 hover:bg-white/5">
-                              <td className="p-3">
-                                <span className={`px-2 py-1 rounded text-[10px] font-bold ${isWin ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
-                                  {isWin ? 'WIN' : 'LOSS'}
-                                </span>
-                              </td>
-                              <td className="p-3">{t.date || 'N/A'}</td>
-                              <td className="p-3 font-semibold text-white">{t.symbol}</td>
-                              <td className="p-3">${t.entry || '0'}</td>
-                              <td className="p-3">${t.exit || '0'}</td>
-                              <td className="p-3">{t.size || '0'}</td>
-                              <td className="p-3 text-gray-400">{t.type || 'BUY'}</td>
-                              <td className={`p-3 font-semibold ${isWin ? 'neon-green' : 'neon-red'}`}>
-                                ${t.pnl || '0.00'}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
+              {/* Trade Table */}
+              <div className="glass-card rounded-xl p-5 overflow-x-auto">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xs font-extrabold tracking-widest text-gray-300 uppercase">Execution Log</h3>
+                  <span className="text-xs text-gray-500 font-mono">{trades.length} records</span>
                 </div>
-
-                <div className="glass-panel p-4 rounded-lg flex flex-col justify-between space-y-4">
-                  <h3 className="text-xs font-bold text-gray-400 uppercase border-b border-gray-800 pb-2">Successful Rate</h3>
-                  <div className="flex flex-col items-center justify-center py-4">
-                    <div className="text-4xl font-extrabold">{winRate}%</div>
-                    <div className="flex gap-4 text-xs mt-3">
-                      <span className="text-emerald-400 font-medium">● Wins: {wins}</span>
-                      <span className="text-red-400 font-medium">● Losses: {losses}</span>
-                    </div>
-                  </div>
-                  <div className="bg-black/40 p-3 rounded border border-gray-800">
-                    <p className="text-[10px] text-gray-500 uppercase">Total Net Return</p>
-                    <p className={`text-xl font-bold ${totalPnl >= 0 ? 'neon-green' : 'neon-red'}`}>${totalPnl.toFixed(2)}</p>
-                  </div>
-                </div>
+                <table className="w-full text-left text-xs text-gray-300 border-collapse">
+                  <thead className="border-b border-gray-800 text-gray-400 font-semibold uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th className="p-3">Result</th>
+                      <th className="p-3">Date</th>
+                      <th className="p-3">Symbol</th>
+                      <th className="p-3">Type</th>
+                      <th className="p-3">Entry</th>
+                      <th className="p-3">Exit</th>
+                      <th className="p-3">Size</th>
+                      <th className="p-3">Setup</th>
+                      <th className="p-3">Chart Log</th>
+                      <th className="p-3 text-right">Return P&L</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trades.length === 0 ? (
+                      <tr><td colSpan="10" className="p-8 text-center text-gray-500">No trades recorded yet. Log your first execution above!</td></tr>
+                    ) : (
+                      trades.map(t => {
+                        const isWin = Number(t.pnl) >= 0;
+                        return (
+                          <tr key={t.id} className="border-b border-gray-800/40 hover:bg-white/[0.02] transition-colors">
+                            <td className="p-3">
+                              <span className={`px-2.5 py-1 rounded text-[10px] font-black tracking-wider ${isWin ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/30'}`}>
+                                {isWin ? 'WIN' : 'LOSS'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-gray-400 mono">{t.date || 'N/A'}</td>
+                            <td className="p-3 font-bold text-white mono">{t.symbol}</td>
+                            <td className="p-3"><span className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px] font-bold">{t.type || 'BUY'}</span></td>
+                            <td className="p-3 mono">${t.entry || '0'}</td>
+                            <td className="p-3 mono">${t.exit || '0'}</td>
+                            <td className="p-3 mono">{t.size || '0'}</td>
+                            <td className="p-3 text-gray-400">{t.setup || 'Break & Retest'}</td>
+                            <td className="p-3">
+                              {t.chartUrl ? (
+                                <a href={t.chartUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline flex items-center gap-1 font-semibold">
+                                  <span>🖼️</span> View
+                                </a>
+                              ) : <span className="text-gray-600">N/A</span>}
+                            </td>
+                            <td className={`p-3 text-right font-bold mono text-sm ${isWin ? 'neon-green' : 'neon-red'}`}>
+                              ${t.pnl || '0.00'}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -302,7 +558,11 @@
           {/* BEHAVIORAL TAB */}
           {activeTab === 'behavioral' && (
             <div className="space-y-6">
-              <h2 className="text-lg font-bold tracking-wide border-b border-gray-800 pb-3">Behavioral Edge Analytics</h2>
+              <div className="glass-card p-5 rounded-xl border-l-4 border-l-purple-500">
+                <h2 className="text-base font-extrabold tracking-wider text-white uppercase">Psychological Edge Analytics</h2>
+                <p className="text-xs text-gray-400 mt-1">Tracks win rate and net return based on your logged emotional state.</p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {['Focus', 'Anxiety', 'Hesitation'].map((emotionKey) => {
                   const filtered = trades.filter(t => t.emotion === emotionKey);
@@ -312,23 +572,23 @@
                   const netPnl = filtered.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
 
                   return (
-                    <div key={emotionKey} className="glass-panel p-5 rounded-lg space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold tracking-widest text-gray-400 uppercase">{emotionKey}</span>
-                        <span className="text-[10px] text-gray-500 bg-black/50 px-2 py-0.5 rounded">{count} Trades</span>
+                    <div key={emotionKey} className="glass-card p-5 rounded-xl space-y-4">
+                      <div className="flex justify-between items-center border-b border-gray-800 pb-2">
+                        <span className="text-xs font-bold tracking-widest text-gray-300 uppercase">{emotionKey} State</span>
+                        <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{count} Trades</span>
                       </div>
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs">
-                          <span className="text-gray-400">Win Rate</span>
-                          <span className="font-bold text-emerald-400">{emotionWinRate}%</span>
+                          <span className="text-gray-400">Win Rate Ratio</span>
+                          <span className="font-bold text-emerald-400 font-mono">{emotionWinRate}%</span>
                         </div>
-                        <div className="w-full bg-black/60 rounded-full h-1.5 overflow-hidden">
+                        <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden border border-gray-800">
                           <div className="h-full bg-emerald-500" style={{ width: `${emotionWinRate}%` }}></div>
                         </div>
                       </div>
                       <div className="pt-2 border-t border-gray-800 flex justify-between items-center text-xs">
-                        <span className="text-gray-500">Net Impact</span>
-                        <span className={`font-mono font-bold ${netPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        <span className="text-gray-400">Net Return Impact</span>
+                        <span className={`font-mono font-bold ${netPnl >= 0 ? 'neon-green' : 'neon-red'}`}>
                           ${netPnl.toFixed(2)}
                         </span>
                       </div>
@@ -339,30 +599,35 @@
             </div>
           )}
 
-          {/* SPLIT JOURNAL TAB */}
+          {/* JOURNAL TAB */}
           {activeTab === 'journal' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="glass-panel p-6 rounded-lg space-y-3">
-                <h3 className="text-sm font-bold text-emerald-400 border-b border-gray-800 pb-2">📈 Market & Session Context</h3>
+              <div className="glass-card p-6 rounded-xl space-y-3">
+                <h3 className="text-sm font-extrabold text-emerald-400 border-b border-gray-800 pb-2 flex items-center gap-2">
+                  <span>📈</span> Market Session & Setup Invalidation
+                </h3>
                 <textarea 
                   value={marketNotes} 
                   onChange={e => { setMarketNotes(e.target.value); localStorage.setItem('market_notes', e.target.value); }} 
-                  placeholder="Record key market levels, setup invalidation points, key news releases..." 
-                  className="w-full h-72 bg-black/50 border border-gray-800 p-3 text-xs text-gray-200 rounded focus:border-emerald-500 focus:outline-none resize-none font-mono"
+                  placeholder="Record macro levels, key news releases (CPI, FOMC), setup invalidations, session liquidity..." 
+                  className="w-full h-80 bg-black/60 border border-gray-800 p-4 text-xs text-gray-200 rounded-lg focus:border-emerald-500 focus:outline-none resize-none font-mono"
                 ></textarea>
               </div>
 
-              <div className="glass-panel p-6 rounded-lg space-y-3">
-                <h3 className="text-sm font-bold text-purple-400 border-b border-gray-800 pb-2">🧠 Personal Mindset & Reflections</h3>
+              <div className="glass-card p-6 rounded-xl space-y-3">
+                <h3 className="text-sm font-extrabold text-purple-400 border-b border-gray-800 pb-2 flex items-center gap-2">
+                  <span>🧠</span> Mindset & Emotional State
+                </h3>
                 <textarea 
                   value={personalNotes} 
                   onChange={e => { setPersonalNotes(e.target.value); localStorage.setItem('personal_notes', e.target.value); }} 
-                  placeholder="Write personal thoughts, emotional reflections, fatigue levels, or non-market notes..." 
-                  className="w-full h-72 bg-black/50 border border-gray-800 p-3 text-xs text-gray-200 rounded focus:border-purple-500 focus:outline-none resize-none font-mono"
+                  placeholder="Record fatigue levels, FOMO triggers, discipline performance, rule adherence reflections..." 
+                  className="w-full h-80 bg-black/60 border border-gray-800 p-4 text-xs text-gray-200 rounded-lg focus:border-purple-500 focus:outline-none resize-none font-mono"
                 ></textarea>
               </div>
             </div>
           )}
+
         </div>
       );
     }
