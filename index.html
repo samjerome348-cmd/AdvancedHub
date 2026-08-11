@@ -57,6 +57,37 @@
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // Helper: Compress images before saving to database
+    const compressImage = (file, callback) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 800; // Resize large screenshots to 800px max width/height
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height && width > maxDim) {
+            height *= maxDim / width;
+            width = maxDim;
+          } else if (height > maxDim) {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7); // 70% quality JPEG
+          callback(compressedDataUrl);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
     function App() {
       const [session, setSession] = React.useState(null);
       const [authMode, setAuthMode] = React.useState('login'); // 'login', 'signup', 'forgot'
@@ -200,7 +231,6 @@
         if (!error) fetchExpenses(session.user.id);
       };
 
-      // Filtered Trades based on selected account option
       const filteredTrades = React.useMemo(() => {
         if (selectedAccountFilter === 'ALL') return trades;
         return trades.filter(t => (t.account_type || 'Live') === selectedAccountFilter);
@@ -264,6 +294,7 @@
         }
       }, [filteredTrades, activeTab, session]);
 
+      // Authentication Handler
       const handleAuth = async (e) => {
         e.preventDefault();
         setAuthError('');
@@ -275,13 +306,13 @@
         } else if (authMode === 'signup') {
           const { error } = await supabase.auth.signUp({ email, password });
           if (error) setAuthError(error.message);
-          else setAuthMsg("Account created! Check your email to confirm registration.");
+          else setAuthMsg("Account created! Check your email inbox to confirm.");
         } else if (authMode === 'forgot') {
           const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.href,
+            redirectTo: window.location.origin
           });
           if (error) setAuthError(error.message);
-          else setAuthMsg("Password reset email sent! Check your inbox.");
+          else setAuthMsg("Password reset email dispatched! Check your inbox/spam folder.");
         }
       };
 
@@ -291,33 +322,30 @@
         setTrades([]);
       };
 
-      // Handle Direct Clipboard Image Paste (Ctrl+V)
+      // Image Handling: Paste Listener
       const handleImagePaste = (e) => {
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
           if (items[i].type.indexOf("image") !== -1) {
             const file = items[i].getAsFile();
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              setFormData(prev => ({ ...prev, chartUrl: event.target.result }));
-            };
-            reader.readAsDataURL(file);
+            compressImage(file, (compressedBase64) => {
+              setFormData(prev => ({ ...prev, chartUrl: compressedBase64 }));
+            });
           }
         }
       };
 
-      // Handle Direct Image File Selection (Local Photo Upload)
+      // Image Handling: File Input
       const handleImageFileUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            setFormData(prev => ({ ...prev, chartUrl: event.target.result }));
-          };
-          reader.readAsDataURL(file);
+          compressImage(file, (compressedBase64) => {
+            setFormData(prev => ({ ...prev, chartUrl: compressedBase64 }));
+          });
         }
       };
 
+      // Trade Submission (Fixed chart_url key)
       const handleSubmit = async (e) => {
         e.preventDefault();
         if (!session) return;
@@ -343,6 +371,7 @@
           setup: formData.setup,
           emotion: formData.emotion,
           account_type: formData.accountType,
+          chart_url: formData.chartUrl || null, // FIXED: Correct column name
           user_id: session.user.id 
         };
 
@@ -354,7 +383,9 @@
             pnl: '', setup: 'Onion play', emotion: 'Focus', mistake: 'None', chartUrl: ''
           });
           fetchUserTrades(session.user.id);
-        } else alert("Error saving trade: " + error.message);
+        } else {
+          alert("Error saving trade: " + error.message);
+        }
       };
 
       // Export CSV
@@ -473,7 +504,7 @@
         return cells;
       };
 
-      // Weekly PnL calculation & Green/Red week breakdown
+      // Weekly Positive vs Negative Breakdown
       const calculateWeeklyBreakdown = () => {
         const year = calendarDate.getFullYear();
         const month = calendarDate.getMonth();
@@ -495,6 +526,7 @@
         return { weeks, greenWeeks, redWeeks };
       };
 
+      // LOGIN / FORGOT PASSWORD VIEW
       if (!session) {
         return (
           <div className="max-w-md mx-auto mt-16 glass-card p-8 rounded-2xl border border-emerald-500/20 space-y-6">
@@ -530,14 +562,20 @@
             </form>
 
             <div className="flex justify-between items-center pt-2 text-xs text-gray-400">
-              <button onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
-                {authMode === 'login' ? "New Trader? Register" : "Back to Login"}
-              </button>
-
-              {authMode === 'login' && (
-                <button onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
-                  Forgot Password?
+              {authMode === 'forgot' ? (
+                <button onClick={() => { setAuthMode('login'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
+                  ← Back to Login
                 </button>
+              ) : (
+                <>
+                  <button onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
+                    {authMode === 'login' ? "New Trader? Register" : "Back to Login"}
+                  </button>
+
+                  <button onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
+                    Forgot Password?
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -695,19 +733,19 @@
                     </select>
                   </div>
                   
-                  {/* Photo Upload & Paste Section */}
+                  {/* Photo Input (Paste Ctrl+V or File Upload) */}
                   <div>
                     <label className="text-[10px] text-gray-400 uppercase block mb-1">
-                      Attach Image (Paste Ctrl+V or File)
+                      Screenshot (Paste Ctrl+V or File)
                     </label>
                     <div className="flex gap-2">
                       <input 
                         type="text" 
-                        value={formData.chartUrl ? (formData.chartUrl.startsWith('data:') ? '[PHOTO ATTACHED]' : formData.chartUrl) : ''} 
+                        value={formData.chartUrl ? (formData.chartUrl.startsWith('data:') ? '✅ [PHOTO ATTACHED]' : formData.chartUrl) : ''} 
                         onChange={e => setFormData({...formData, chartUrl: e.target.value})} 
                         onPaste={handleImagePaste}
                         className="input-field w-full" 
-                        placeholder="Paste image (Ctrl+V) or URL" 
+                        placeholder="Click here & Ctrl+V screenshot" 
                       />
                       <label className="cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-2 rounded text-xs border border-gray-700 flex items-center justify-center font-bold">
                         📷
@@ -799,7 +837,7 @@
                 </div>
               </div>
 
-              {/* Weekly Performance Breakdown Section (Positive vs Negative Weeks) */}
+              {/* Weekly Positive vs Negative Section */}
               <div className="grid grid-cols-2 sm:grid-cols-7 gap-3">
                 <div className="glass-card p-3 rounded-lg border-l-4 border-l-emerald-400 col-span-1">
                   <p className="text-[10px] text-gray-400 uppercase font-semibold">Positive Weeks</p>
@@ -832,7 +870,7 @@
             </div>
           )}
 
-          {/* FUNDED EXPENSES TAB */}
+          {/* EXPENSES TAB */}
           {activeTab === 'expenses' && (
             <div className="space-y-6">
               <form onSubmit={handleAddExpense} className="glass-card p-5 rounded-xl space-y-4">
@@ -893,7 +931,7 @@
             </div>
           )}
 
-          {/* DAILY JOURNAL TAB */}
+          {/* JOURNAL TAB */}
           {activeTab === 'journal' && (
             <div className="space-y-6">
               <div className="glass-card p-4 rounded-xl flex justify-between items-center">
