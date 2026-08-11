@@ -59,10 +59,11 @@
 
     function App() {
       const [session, setSession] = React.useState(null);
-      const [authMode, setAuthMode] = React.useState('login'); 
+      const [authMode, setAuthMode] = React.useState('login'); // 'login', 'signup', 'forgot'
       const [email, setEmail] = React.useState('');
       const [password, setPassword] = React.useState('');
       const [authError, setAuthError] = React.useState('');
+      const [authMsg, setAuthMsg] = React.useState('');
 
       const [activeTab, setActiveTab] = React.useState('dashboard');
       const [selectedAccountFilter, setSelectedAccountFilter] = React.useState('ALL');
@@ -115,7 +116,6 @@
         return () => subscription.unsubscribe();
       }, []);
 
-      // Fetch Journal whenever journalDate or session changes
       React.useEffect(() => {
         if (session) fetchJournalEntry(journalDate);
       }, [journalDate, session]);
@@ -141,7 +141,7 @@
       };
 
       const fetchJournalEntry = async (dateStr) => {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('journal_entries')
           .select('*')
           .eq('user_id', session.user.id)
@@ -267,13 +267,21 @@
       const handleAuth = async (e) => {
         e.preventDefault();
         setAuthError('');
+        setAuthMsg('');
+
         if (authMode === 'login') {
           const { error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) setAuthError(error.message);
-        } else {
+        } else if (authMode === 'signup') {
           const { error } = await supabase.auth.signUp({ email, password });
           if (error) setAuthError(error.message);
-          else alert("Account created! Log in.");
+          else setAuthMsg("Account created! Check your email to confirm registration.");
+        } else if (authMode === 'forgot') {
+          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.href,
+          });
+          if (error) setAuthError(error.message);
+          else setAuthMsg("Password reset email sent! Check your inbox.");
         }
       };
 
@@ -281,6 +289,33 @@
         await supabase.auth.signOut();
         setSession(null);
         setTrades([]);
+      };
+
+      // Handle Direct Clipboard Image Paste (Ctrl+V)
+      const handleImagePaste = (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+            const file = items[i].getAsFile();
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              setFormData(prev => ({ ...prev, chartUrl: event.target.result }));
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+      };
+
+      // Handle Direct Image File Selection (Local Photo Upload)
+      const handleImageFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setFormData(prev => ({ ...prev, chartUrl: event.target.result }));
+          };
+          reader.readAsDataURL(file);
+        }
       };
 
       const handleSubmit = async (e) => {
@@ -322,7 +357,7 @@
         } else alert("Error saving trade: " + error.message);
       };
 
-      // CSV Export
+      // Export CSV
       const exportCSV = () => {
         if (filteredTrades.length === 0) return alert("No trades to export.");
         const headers = ["Date", "Account", "Symbol", "Type", "Entry", "Exit", "Size", "Setup", "P&L"];
@@ -339,7 +374,7 @@
         document.body.removeChild(link);
       };
 
-      // CSV Import
+      // Import CSV
       const importCSV = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -398,7 +433,6 @@
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-        // Group trades by date
         const tradesByDate = {};
         filteredTrades.forEach(t => {
           if (!t.date) return;
@@ -439,21 +473,26 @@
         return cells;
       };
 
-      // Weekly PnL calculation
-      const calculateWeeklyPnL = () => {
+      // Weekly PnL calculation & Green/Red week breakdown
+      const calculateWeeklyBreakdown = () => {
         const year = calendarDate.getFullYear();
         const month = calendarDate.getMonth();
         
-        const weeks = [0, 0, 0, 0, 0, 0];
+        const weeks = [0, 0, 0, 0, 0];
+
         filteredTrades.forEach(t => {
           if (!t.date) return;
           const [dYear, dMonth, dDay] = t.date.split('-').map(Number);
           if (dYear === year && dMonth === month + 1) {
-            const weekIdx = Math.floor((dDay - 1) / 7);
+            const weekIdx = Math.min(Math.floor((dDay - 1) / 7), 4);
             weeks[weekIdx] += Number(t.pnl || 0);
           }
         });
-        return weeks;
+
+        const greenWeeks = weeks.filter(w => w > 0).length;
+        const redWeeks = weeks.filter(w => w < 0).length;
+
+        return { weeks, greenWeeks, redWeeks };
       };
 
       if (!session) {
@@ -472,24 +511,40 @@
                 <label className="text-xs text-gray-400 font-semibold block mb-1">TRADER EMAIL</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="input-field w-full py-2.5" placeholder="trader@terminal.com" required />
               </div>
-              <div>
-                <label className="text-xs text-gray-400 font-semibold block mb-1">PASSWORD</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="input-field w-full py-2.5" placeholder="••••••••••••" required />
-              </div>
+              
+              {authMode !== 'forgot' && (
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold block mb-1">PASSWORD</label>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="input-field w-full py-2.5" placeholder="••••••••••••" required={authMode !== 'forgot'} />
+                </div>
+              )}
+
               {authError && <p className="text-xs text-red-400 font-mono bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>}
+              {authMsg && <p className="text-xs text-emerald-400 font-mono bg-emerald-500/10 p-2 rounded border border-emerald-500/20">{authMsg}</p>}
+
               <button type="submit" className="w-full glow-btn text-black font-extrabold py-3 rounded-lg text-xs tracking-wider uppercase mt-2">
-                {authMode === 'login' ? 'ACCESS TERMINAL' : 'INITIALIZE ACCOUNT'}
+                {authMode === 'login' && 'ACCESS TERMINAL'}
+                {authMode === 'signup' && 'INITIALIZE ACCOUNT'}
+                {authMode === 'forgot' && 'SEND RESET LINK'}
               </button>
             </form>
 
-            <div className="text-center pt-2">
-              <button onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="text-xs text-gray-400 hover:text-emerald-400 transition-all underline">
-                {authMode === 'login' ? "New Trader? Create Account" : "Registered? Log In"}
+            <div className="flex justify-between items-center pt-2 text-xs text-gray-400">
+              <button onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
+                {authMode === 'login' ? "New Trader? Register" : "Back to Login"}
               </button>
+
+              {authMode === 'login' && (
+                <button onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
+                  Forgot Password?
+                </button>
+              )}
             </div>
           </div>
         );
       }
+
+      const { weeks, greenWeeks, redWeeks } = calculateWeeklyBreakdown();
 
       return (
         <div className="max-w-[1400px] mx-auto space-y-6">
@@ -545,7 +600,6 @@
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               
-              {/* Summary Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-emerald-400">
                   <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Net P&L ({selectedAccountFilter})</p>
@@ -567,7 +621,6 @@
                 </div>
               </div>
 
-              {/* CSV Import/Export Controls */}
               <div className="glass-card p-3 rounded-xl flex justify-between items-center">
                 <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">📁 Data Portability</span>
                 <div className="flex gap-3">
@@ -625,7 +678,7 @@
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   <div>
                     <label className="text-[10px] text-gray-400 uppercase block mb-1">Net Return ($)</label>
                     <input type="number" step="any" value={formData.pnl} onChange={e => setFormData({...formData, pnl: e.target.value})} className="input-field w-full font-bold" />
@@ -641,10 +694,28 @@
                       <option value="Packrunner">Packrunner</option>
                     </select>
                   </div>
+                  
+                  {/* Photo Upload & Paste Section */}
                   <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Chart Image URL</label>
-                    <input type="url" value={formData.chartUrl} onChange={e => setFormData({...formData, chartUrl: e.target.value})} className="input-field w-full" placeholder="https://..." />
+                    <label className="text-[10px] text-gray-400 uppercase block mb-1">
+                      Attach Image (Paste Ctrl+V or File)
+                    </label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={formData.chartUrl ? (formData.chartUrl.startsWith('data:') ? '[PHOTO ATTACHED]' : formData.chartUrl) : ''} 
+                        onChange={e => setFormData({...formData, chartUrl: e.target.value})} 
+                        onPaste={handleImagePaste}
+                        className="input-field w-full" 
+                        placeholder="Paste image (Ctrl+V) or URL" 
+                      />
+                      <label className="cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-2 rounded text-xs border border-gray-700 flex items-center justify-center font-bold">
+                        📷
+                        <input type="file" accept="image/*" onChange={handleImageFileUpload} className="hidden" />
+                      </label>
+                    </div>
                   </div>
+
                   <div className="flex items-end">
                     <button type="submit" className="glow-btn text-black font-extrabold w-full py-2 rounded-lg text-xs tracking-wider uppercase">
                       + RECORD TRADE
@@ -664,13 +735,14 @@
                       <th className="p-3">Symbol</th>
                       <th className="p-3">Type</th>
                       <th className="p-3">Setup</th>
+                      <th className="p-3">Chart Photo</th>
                       <th className="p-3 text-right">Return P&L</th>
                       <th className="p-3 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredTrades.length === 0 ? (
-                      <tr><td colSpan="8" className="p-8 text-center text-gray-500">No trades recorded for this account filter.</td></tr>
+                      <tr><td colSpan="9" className="p-8 text-center text-gray-500">No trades recorded for this account filter.</td></tr>
                     ) : (
                       filteredTrades.map(t => {
                         const isWin = Number(t.pnl) >= 0;
@@ -686,6 +758,15 @@
                             <td className="p-3 font-bold text-white mono">{t.symbol}</td>
                             <td className="p-3"><span className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px]">{t.type}</span></td>
                             <td className="p-3 text-gray-400">{t.setup}</td>
+                            <td className="p-3">
+                              {t.chart_url ? (
+                                <a href={t.chart_url} target="_blank" rel="noreferrer" className="text-emerald-400 underline font-semibold text-[10px]">
+                                  View Screenshot 🖼️
+                                </a>
+                              ) : (
+                                <span className="text-gray-600 text-[10px]">-</span>
+                              )}
+                            </td>
                             <td className={`p-3 text-right font-bold mono ${isWin ? 'neon-green' : 'neon-red'}`}>
                               ${t.pnl || '0.00'}
                             </td>
@@ -718,12 +799,21 @@
                 </div>
               </div>
 
-              {/* Weekly Performance Breakdowns */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {calculateWeeklyPnL().slice(0, 4).map((wPnL, idx) => (
-                  <div key={idx} className="glass-card p-3 rounded-lg border-l-2 border-l-emerald-500">
-                    <p className="text-[10px] text-gray-400 uppercase">Week {idx + 1} Net</p>
-                    <p className={`text-base font-bold mono mt-1 ${wPnL >= 0 ? 'neon-green' : 'neon-red'}`}>
+              {/* Weekly Performance Breakdown Section (Positive vs Negative Weeks) */}
+              <div className="grid grid-cols-2 sm:grid-cols-7 gap-3">
+                <div className="glass-card p-3 rounded-lg border-l-4 border-l-emerald-400 col-span-1">
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold">Positive Weeks</p>
+                  <p className="text-xl font-extrabold neon-green mono mt-1">{greenWeeks} W</p>
+                </div>
+                <div className="glass-card p-3 rounded-lg border-l-4 border-l-red-500 col-span-1">
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold">Negative Weeks</p>
+                  <p className="text-xl font-extrabold neon-red mono mt-1">{redWeeks} W</p>
+                </div>
+
+                {weeks.map((wPnL, idx) => (
+                  <div key={idx} className={`glass-card p-3 rounded-lg border-l-2 ${wPnL >= 0 ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
+                    <p className="text-[10px] text-gray-400 uppercase">Week {idx + 1}</p>
+                    <p className={`text-sm font-bold mono mt-1 ${wPnL >= 0 ? 'neon-green' : 'neon-red'}`}>
                       ${wPnL.toFixed(2)}
                     </p>
                   </div>
