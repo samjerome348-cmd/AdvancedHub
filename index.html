@@ -55,16 +55,22 @@
     const SUPABASE_URL = "https://uydgnqqmkmoemmyrorbg.supabase.co"; 
     const SUPABASE_ANON_KEY = "sb_publishable_IaI9Dt8lIL2m2-cIrq9Gug_NdeWchok"; 
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Enable session persistence in LocalStorage
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
 
-    // Helper: Compress images before saving to database
     const compressImage = (file, callback) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const maxDim = 800; // Resize large screenshots to 800px max width/height
+          const maxDim = 800;
           let width = img.width;
           let height = img.height;
 
@@ -80,7 +86,7 @@
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7); // 70% quality JPEG
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
           callback(compressedDataUrl);
         };
         img.src = event.target.result;
@@ -90,7 +96,8 @@
 
     function App() {
       const [session, setSession] = React.useState(null);
-      const [authMode, setAuthMode] = React.useState('login'); // 'login', 'signup', 'forgot'
+      const [loadingAuth, setLoadingAuth] = React.useState(true);
+      const [authMode, setAuthMode] = React.useState('login'); 
       const [email, setEmail] = React.useState('');
       const [password, setPassword] = React.useState('');
       const [authError, setAuthError] = React.useState('');
@@ -101,22 +108,17 @@
       const [trades, setTrades] = React.useState([]);
       const [expenses, setExpenses] = React.useState([]);
 
-      // Calendar state
       const [calendarDate, setCalendarDate] = React.useState(new Date());
-
-      // Daily Journal state
       const [journalDate, setJournalDate] = React.useState(new Date().toISOString().split('T')[0]);
       const [marketNotes, setMarketNotes] = React.useState('');
       const [personalNotes, setPersonalNotes] = React.useState('');
 
-      // Form Data
       const [formData, setFormData] = React.useState({ 
         date: new Date().toISOString().split('T')[0],
         symbol: 'NQ', assetClass: 'Futures', accountType: 'Funded', entry: '', exit: '', size: '', type: 'BUY', 
         pnl: '', setup: 'Onion play', emotion: 'Focus', mistake: 'None', chartUrl: ''
       });
 
-      // Expense Form Data
       const [expenseForm, setExpenseForm] = React.useState({
         date: new Date().toISOString().split('T')[0],
         firmName: 'Apex Trader Funding', accountSize: '50K', cost: '', status: 'Active'
@@ -127,6 +129,7 @@
       const winLossChartInstance = React.useRef(null);
       const equityChartInstance = React.useRef(null);
 
+      // Authenticate & load persistent session
       React.useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
           setSession(session);
@@ -134,6 +137,7 @@
             fetchUserTrades(session.user.id);
             fetchExpenses(session.user.id);
           }
+          setLoadingAuth(false);
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -142,6 +146,7 @@
             fetchUserTrades(session.user.id);
             fetchExpenses(session.user.id);
           }
+          setLoadingAuth(false);
         });
 
         return () => subscription.unsubscribe();
@@ -196,12 +201,12 @@
           personal_notes: personalNotes
         }, { onConflict: 'user_id,date' });
 
-        if (!error) alert("Journal entry saved for " + journalDate);
+        if (!error) alert("Journal entry successfully saved to database!");
         else alert("Error saving journal: " + error.message);
       };
 
       const handleDeleteTrade = async (tradeId) => {
-        if (window.confirm("Are you sure you want to delete this trade execution?")) {
+        if (window.confirm("Delete this execution?")) {
           const { error } = await supabase.from('trades').delete().eq('id', tradeId);
           if (!error) fetchUserTrades(session.user.id);
           else alert("Error deleting trade: " + error.message);
@@ -236,7 +241,6 @@
         return trades.filter(t => (t.account_type || 'Live') === selectedAccountFilter);
       }, [trades, selectedAccountFilter]);
 
-      // Charting Logic
       React.useEffect(() => {
         if (activeTab === 'dashboard' && session && filteredTrades.length > 0) {
           if (winLossChartRef.current) {
@@ -294,7 +298,6 @@
         }
       }, [filteredTrades, activeTab, session]);
 
-      // Authentication Handler
       const handleAuth = async (e) => {
         e.preventDefault();
         setAuthError('');
@@ -306,13 +309,13 @@
         } else if (authMode === 'signup') {
           const { error } = await supabase.auth.signUp({ email, password });
           if (error) setAuthError(error.message);
-          else setAuthMsg("Account created! Check your email inbox to confirm.");
+          else setAuthMsg("Account created! You can now log in.");
         } else if (authMode === 'forgot') {
           const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: window.location.origin
           });
           if (error) setAuthError(error.message);
-          else setAuthMsg("Password reset email dispatched! Check your inbox/spam folder.");
+          else setAuthMsg("Password reset email sent!");
         }
       };
 
@@ -322,7 +325,6 @@
         setTrades([]);
       };
 
-      // Image Handling: Paste Listener
       const handleImagePaste = (e) => {
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
@@ -335,7 +337,6 @@
         }
       };
 
-      // Image Handling: File Input
       const handleImageFileUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -345,10 +346,9 @@
         }
       };
 
-      // Trade Submission (Fixed chart_url key)
       const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!session) return;
+        if (!session) return alert("Session expired. Please log in again.");
 
         let calculatedPnl = formData.pnl;
         if (!calculatedPnl && formData.entry && formData.exit && formData.size) {
@@ -371,7 +371,7 @@
           setup: formData.setup,
           emotion: formData.emotion,
           account_type: formData.accountType,
-          chart_url: formData.chartUrl || null, // FIXED: Correct column name
+          chart_url: formData.chartUrl || null,
           user_id: session.user.id 
         };
 
@@ -384,11 +384,10 @@
           });
           fetchUserTrades(session.user.id);
         } else {
-          alert("Error saving trade: " + error.message);
+          alert("Database Error: " + error.message);
         }
       };
 
-      // Export CSV
       const exportCSV = () => {
         if (filteredTrades.length === 0) return alert("No trades to export.");
         const headers = ["Date", "Account", "Symbol", "Type", "Entry", "Exit", "Size", "Setup", "P&L"];
@@ -405,7 +404,6 @@
         document.body.removeChild(link);
       };
 
-      // Import CSV
       const importCSV = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -446,7 +444,6 @@
         reader.readAsText(file);
       };
 
-      // Analytics
       const totalPnl = filteredTrades.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
       const winsList = filteredTrades.filter(t => Number(t.pnl) > 0);
       const lossesList = filteredTrades.filter(t => Number(t.pnl) < 0);
@@ -457,7 +454,6 @@
       const profitFactor = totalLossDollar > 0 ? (totalWinDollar / totalLossDollar).toFixed(2) : totalWinDollar > 0 ? '∞' : '0.00';
       const winRate = filteredTrades.length > 0 ? Math.round((winsList.length / filteredTrades.length) * 100) : 0;
 
-      // Calendar Data Calculation
       const renderCalendarDays = () => {
         const year = calendarDate.getFullYear();
         const month = calendarDate.getMonth();
@@ -504,11 +500,9 @@
         return cells;
       };
 
-      // Weekly Positive vs Negative Breakdown
       const calculateWeeklyBreakdown = () => {
         const year = calendarDate.getFullYear();
         const month = calendarDate.getMonth();
-        
         const weeks = [0, 0, 0, 0, 0];
 
         filteredTrades.forEach(t => {
@@ -526,7 +520,14 @@
         return { weeks, greenWeeks, redWeeks };
       };
 
-      // LOGIN / FORGOT PASSWORD VIEW
+      if (loadingAuth) {
+        return (
+          <div className="flex min-h-screen items-center justify-center">
+            <div className="text-emerald-400 font-mono text-sm animate-pulse">⚡ CONNECTING TO TERMINAL...</div>
+          </div>
+        );
+      }
+
       if (!session) {
         return (
           <div className="max-w-md mx-auto mt-16 glass-card p-8 rounded-2xl border border-emerald-500/20 space-y-6">
@@ -586,7 +587,6 @@
 
       return (
         <div className="max-w-[1400px] mx-auto space-y-6">
-          {/* Header */}
           <div className="glass-card p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
@@ -601,7 +601,6 @@
               </div>
             </div>
 
-            {/* Account Selector */}
             <div className="flex items-center gap-2 bg-black/60 p-1.5 rounded-lg border border-gray-800">
               <span className="text-[10px] text-gray-400 font-bold px-2 uppercase">Account:</span>
               {['ALL', 'Live', 'Funded', 'Demo'].map(acc => (
@@ -634,7 +633,6 @@
             </div>
           </div>
 
-          {/* DASHBOARD TAB */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
               
@@ -672,7 +670,6 @@
                 </div>
               </div>
 
-              {/* Log Form */}
               <form onSubmit={handleSubmit} className="glass-card p-5 rounded-xl space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-800 pb-2">
                   <h3 className="text-xs font-extrabold tracking-widest text-emerald-400 uppercase">⚡ Manual Execution Entry</h3>
@@ -733,7 +730,6 @@
                     </select>
                   </div>
                   
-                  {/* Photo Input (Paste Ctrl+V or File Upload) */}
                   <div>
                     <label className="text-[10px] text-gray-400 uppercase block mb-1">
                       Screenshot (Paste Ctrl+V or File)
@@ -762,7 +758,6 @@
                 </div>
               </form>
 
-              {/* Trade Table */}
               <div className="glass-card rounded-xl p-5 overflow-x-auto">
                 <table className="w-full text-left text-xs text-gray-300 border-collapse">
                   <thead className="border-b border-gray-800 text-gray-400 font-semibold uppercase text-[10px] tracking-wider">
@@ -821,7 +816,6 @@
             </div>
           )}
 
-          {/* CALENDAR TAB */}
           {activeTab === 'calendar' && (
             <div className="space-y-6">
               <div className="glass-card p-5 rounded-xl flex justify-between items-center">
@@ -837,7 +831,6 @@
                 </div>
               </div>
 
-              {/* Weekly Positive vs Negative Section */}
               <div className="grid grid-cols-2 sm:grid-cols-7 gap-3">
                 <div className="glass-card p-3 rounded-lg border-l-4 border-l-emerald-400 col-span-1">
                   <p className="text-[10px] text-gray-400 uppercase font-semibold">Positive Weeks</p>
@@ -858,7 +851,6 @@
                 ))}
               </div>
 
-              {/* Calendar Grid */}
               <div className="glass-card p-5 rounded-xl">
                 <div className="grid grid-cols-7 gap-2 mb-3 text-center text-xs font-bold text-gray-400 uppercase">
                   <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
@@ -870,7 +862,6 @@
             </div>
           )}
 
-          {/* EXPENSES TAB */}
           {activeTab === 'expenses' && (
             <div className="space-y-6">
               <form onSubmit={handleAddExpense} className="glass-card p-5 rounded-xl space-y-4">
@@ -931,7 +922,6 @@
             </div>
           )}
 
-          {/* JOURNAL TAB */}
           {activeTab === 'journal' && (
             <div className="space-y-6">
               <div className="glass-card p-4 rounded-xl flex justify-between items-center">
