@@ -286,17 +286,7 @@
         link.setAttribute("download", `trading_journal_${selectedAccountFilter}_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
       };
-<div class="px-4 py-3 border-t border-cardBorder space-y-2">
-  <p class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Download Apps</p>
-  <div class="flex gap-2">
-    <a href="./TradeJournal.APK" download class="flex-1 bg-slate-800 hover:bg-slate-700 text-accentGreen text-[10px] font-bold py-2 px-1 rounded border border-cardBorder text-center transition-all">
-      📱 Android APK
-    </a>
-    <a href="./TradeJournal.MSIX" download class="flex-1 bg-slate-800 hover:bg-slate-700 text-accentCyan text-[10px] font-bold py-2 px-1 rounded border border-cardBorder text-center transition-all">
-      💻 Windows App
-    </a>
-  </div>
-</div>
+
       const importCSV = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -588,15 +578,32 @@
                 ))}
               </nav>
             </div>
-            <div className="p-4 space-y-3 border-t border-cardBorder">
-              <div className="text-[10px] text-gray-500 px-1 truncate">{session.user.email}</div>
-              <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-accentRed/30 text-accentRed hover:bg-accentRed/10 text-xs font-semibold transition">
-                🚪 Logout
-              </button>
+
+            <div className="space-y-3">
+              {/* APP DOWNLOAD SECTION */}
+              <div className="px-4 py-3 border-t border-cardBorder space-y-2">
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Download Apps</p>
+                <div className="flex gap-2">
+                  <a href="./TradeJournal.APK" download class="flex-1 bg-slate-800 hover:bg-slate-700 text-accentGreen text-[10px] font-bold py-2 px-1 rounded border border-cardBorder text-center transition-all">
+                    📱 Android APK
+                  </a>
+                  <a href="./TradeJournal.MSIX" download class="flex-1 bg-slate-800 hover:bg-slate-700 text-accentCyan text-[10px] font-bold py-2 px-1 rounded border border-cardBorder text-center transition-all">
+                    💻 Windows App
+                  </a>
+                </div>
+              </div>
+
+              {/* USER / LOGOUT SECTION */}
+              <div className="p-4 space-y-3 border-t border-cardBorder">
+                <div className="text-[10px] text-gray-500 px-1 truncate">{session.user.email}</div>
+                <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-accentRed/30 text-accentRed hover:bg-accentRed/10 text-xs font-semibold transition">
+                  🚪 Logout
+                </button>
+              </div>
             </div>
           </aside>
 
-          {/* MAIN */}
+          {/* MAIN CONTENT AREA */}
           <div className="flex-1 flex flex-col h-full overflow-hidden">
             <header className="h-16 border-b border-cardBorder bg-cardDark/50 px-6 flex items-center justify-between shrink-0">
               <span className="text-sm font-semibold text-gray-300">{NAV_ITEMS.find(n => n.id === activeTab)?.label}</span>
