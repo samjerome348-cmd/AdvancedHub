@@ -121,6 +121,7 @@
       const [authMsg, setAuthMsg] = useState('');
 
       const [activeTab, setActiveTab] = useState('dashboard');
+      const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
       const [selectedAccountFilter, setSelectedAccountFilter] = useState('ALL');
       const [trades, setTrades] = useState([]);
       const [expenses, setExpenses] = useState([]);
@@ -529,7 +530,7 @@
                 )}
                 {authError && <p className="text-xs text-accentRed font-mono bg-accentRed/10 p-2 rounded border border-accentRed/20">{authError}</p>}
                 {authMsg && <p className="text-xs text-accentGreen font-mono bg-accentGreen/10 p-2 rounded border border-accentGreen/20">{authMsg}</p>}
-                <button type="submit" className="w-full glow-btn text-black font-extrabold py-3 rounded-lg text-xs tracking-wider uppercase mt-2">
+                <button type="submit" className="glow-btn text-black font-extrabold py-3 rounded-lg text-xs tracking-wider uppercase mt-2 w-full">
                   {authMode === 'login' && 'ACCESS TERMINAL'}
                   {authMode === 'signup' && 'INITIALIZE ACCOUNT'}
                   {authMode === 'forgot' && 'SEND RESET LINK'}
@@ -555,22 +556,41 @@
       const { weeks, greenWeeks, redWeeks } = calculateWeeklyBreakdown();
 
       return (
-        <div className="flex h-screen overflow-hidden bg-bgDark">
+        <div className="flex h-screen overflow-hidden bg-bgDark relative">
+          {/* MOBILE OVERLAY BACKDROP */}
+          {isMobileMenuOpen && (
+            <div 
+              onClick={() => setIsMobileMenuOpen(false)} 
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden transition-opacity"
+            />
+          )}
+
           {/* SIDEBAR */}
-          <aside className="w-60 bg-cardDark/80 border-r border-cardBorder flex flex-col justify-between h-full overflow-y-auto shrink-0">
+          <aside className={`fixed md:relative z-50 w-60 bg-cardDark/95 md:bg-cardDark/80 border-r border-cardBorder flex flex-col justify-between h-full overflow-y-auto shrink-0 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
             <div className="p-4 space-y-6">
-              <div className="flex items-center gap-3 px-2">
-                <img src="./logo.png" alt="Logo" className="w-9 h-9 rounded-lg border border-accentGreen/30 object-cover" />
-                <div>
-                  <h1 className="font-extrabold text-lg tracking-wider text-white leading-tight">TRADE<span className="text-accentGreen">HUB</span></h1>
-                  <p className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase">Performance Terminal</p>
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-3">
+                  <img src="./logo.png" alt="Logo" className="w-9 h-9 rounded-lg border border-accentGreen/30 object-cover" />
+                  <div>
+                    <h1 className="font-extrabold text-lg tracking-wider text-white leading-tight">TRADE<span className="text-accentGreen">HUB</span></h1>
+                    <p className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase">Performance Terminal</p>
+                  </div>
                 </div>
+                <button 
+                  onClick={() => setIsMobileMenuOpen(false)} 
+                  className="md:hidden text-gray-400 hover:text-white p-1"
+                >
+                  ✕
+                </button>
               </div>
               <nav className="space-y-1.5 text-sm font-medium">
                 {NAV_ITEMS.map(item => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setIsMobileMenuOpen(false);
+                    }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition text-left ${activeTab === item.id ? 'bg-gradient-to-r from-indigo-900/50 to-accentGreen/10 text-white border border-accentGreen/30' : 'text-gray-400 hover:text-white hover:bg-slate-800/50 border border-transparent'}`}
                   >
                     <span>{item.icon}</span> {item.label}
@@ -584,10 +604,10 @@
               <div className="px-4 py-3 border-t border-cardBorder space-y-2">
                 <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Download Apps</p>
                 <div className="flex gap-2">
-                  <a href="./TradeJournal.APK" download class="flex-1 bg-slate-800 hover:bg-slate-700 text-accentGreen text-[10px] font-bold py-2 px-1 rounded border border-cardBorder text-center transition-all">
+                  <a href="./TradeJournal.APK" download className="flex-1 bg-slate-800 hover:bg-slate-700 text-accentGreen text-[10px] font-bold py-2 px-1 rounded border border-cardBorder text-center transition-all">
                     📱 Android APK
                   </a>
-                  <a href="./TradeJournal.MSIX" download class="flex-1 bg-slate-800 hover:bg-slate-700 text-accentCyan text-[10px] font-bold py-2 px-1 rounded border border-cardBorder text-center transition-all">
+                  <a href="./TradeJournal.MSIX" download className="flex-1 bg-slate-800 hover:bg-slate-700 text-accentCyan text-[10px] font-bold py-2 px-1 rounded border border-cardBorder text-center transition-all">
                     💻 Windows App
                   </a>
                 </div>
@@ -604,24 +624,34 @@
           </aside>
 
           {/* MAIN CONTENT AREA */}
-          <div className="flex-1 flex flex-col h-full overflow-hidden">
-            <header className="h-16 border-b border-cardBorder bg-cardDark/50 px-6 flex items-center justify-between shrink-0">
-              <span className="text-sm font-semibold text-gray-300">{NAV_ITEMS.find(n => n.id === activeTab)?.label}</span>
+          <div className="flex-1 flex flex-col h-full overflow-hidden w-full">
+            <header className="h-16 border-b border-cardBorder bg-cardDark/50 px-4 md:px-6 flex items-center justify-between shrink-0 gap-2">
               <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+                  className="md:hidden p-2 text-gray-300 hover:text-white bg-cardDark rounded-lg border border-cardBorder"
+                  aria-label="Toggle Menu"
+                >
+                  ☰
+                </button>
+                <span className="text-sm font-semibold text-gray-300">{NAV_ITEMS.find(n => n.id === activeTab)?.label}</span>
+              </div>
+              
+              <div className="flex items-center gap-2 sm:gap-3">
                 <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-cardBorder">
                   {['ALL', 'Live', 'Funded', 'Demo'].map(acc => (
-                    <button key={acc} onClick={() => setSelectedAccountFilter(acc)} className={`px-3 py-1 rounded text-xs font-extrabold uppercase transition-all ${selectedAccountFilter === acc ? 'bg-accentGreen text-black' : 'text-gray-400 hover:text-white'}`}>
+                    <button key={acc} onClick={() => setSelectedAccountFilter(acc)} className={`px-2 sm:px-3 py-1 rounded text-[10px] sm:text-xs font-extrabold uppercase transition-all ${selectedAccountFilter === acc ? 'bg-accentGreen text-black' : 'text-gray-400 hover:text-white'}`}>
                       {acc}
                     </button>
                   ))}
                 </div>
-                <button onClick={() => setActiveTab('trades')} className="text-xs px-3.5 py-1.5 rounded-lg bg-accentGreen/10 border border-accentGreen/30 text-accentGreen font-semibold hover:bg-accentGreen/20 transition flex items-center gap-1">
-                  <span>+</span> Add Trade
+                <button onClick={() => setActiveTab('trades')} className="text-xs px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-accentGreen/10 border border-accentGreen/30 text-accentGreen font-semibold hover:bg-accentGreen/20 transition flex items-center gap-1">
+                  <span>+</span> <span className="hidden sm:inline">Add Trade</span>
                 </button>
               </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto p-6 space-y-6">
+            <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
 
               {activeTab === 'dashboard' && (
                 <div className="space-y-6">
