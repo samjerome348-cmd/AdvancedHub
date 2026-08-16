@@ -2,7 +2,7 @@
   "id": "/AdvancedHub/",
   "name": "Trade Hub - Performance Terminal",
   "short_name": "TradeHub",
-  "description": "Trading Mindset &amp; Performance Dashboard",
+  "description": "Trading Mindset & Performance Dashboard",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -27,22 +27,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "./screenshot-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "TradeHub Terminal Dashboard"
-    },
-    {
-      "src": "./screenshot-mobile.png",
-      "sizes": "640x1136",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "TradeHub Mobile View"
     }
   ],
   "lang": "en"
