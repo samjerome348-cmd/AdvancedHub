@@ -2,14 +2,18 @@
   "id": "/AdvancedHub/",
   "name": "Trade Hub - Performance Terminal",
   "short_name": "TradeHub",
-  "description": "Trading Mindset & Performance Dashboard",
+  "description": "Trading Mindset &amp; Performance Dashboard",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0b0f19",
   "theme_color": "#0b0f19",
-  "categories": ["finance", "utilities", "productivity"],
+  "categories": [
+    "finance",
+    "utilities",
+    "productivity"
+  ],
   "prefer_related_applications": false,
   "icons": [
     {
@@ -40,5 +44,6 @@
       "form_factor": "narrow",
       "label": "TradeHub Mobile View"
     }
-  ]
+  ],
+  "lang": "en"
 }
