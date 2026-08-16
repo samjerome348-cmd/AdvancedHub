@@ -1,17 +1,44 @@
 {
-  "name": "Trade Journal",
-  "short_name": "Trade Journal",
+  "id": "/AdvancedHub/",
+  "name": "Trade Hub - Performance Terminal",
+  "short_name": "TradeHub",
   "description": "Trading Mindset & Performance Dashboard",
-  "start_url": "/",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0b0f19",
-  "theme_color": "#03261D",
+  "theme_color": "#0b0f19",
+  "categories": ["finance", "utilities", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/logo.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
+      "src": "https://via.placeholder.com/192.png?text=192x192",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "https://via.placeholder.com/512.png?text=512x512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://via.placeholder.com/1280x720.png?text=TradeHub+Dashboard",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "TradeHub Terminal Dashboard"
+    },
+    {
+      "src": "https://via.placeholder.com/640x1136.png?text=TradeHub+Mobile",
+      "sizes": "640x1136",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "TradeHub Mobile View"
     }
   ]
 }
