@@ -1,68 +1,83 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8">
-  <title>ADVANCEDHUB // Elite Trading Terminal</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TRADEHUB // Performance Terminal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bgDark: '#0b0f19',
+            cardDark: '#131b2e',
+            cardBorder: '#1e293b',
+            accentGreen: '#00E599',
+            accentRed: '#FF4D4D',
+            accentYellow: '#F59E0B',
+            accentCyan: '#06B6D4'
+          }
+        }
+      }
+    }
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@300;400;600;700;900&display=swap');
-    
-    body { 
-      background: radial-gradient(circle at top right, #0d1322, #06080e); 
-      color: #e2e8f0; 
-      font-family: 'Inter', sans-serif;
-      min-height: 100vh;
-    }
+    body { font-family: 'Inter', sans-serif; }
     .mono { font-family: 'JetBrains Mono', monospace; }
-    .neon-green { color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.3); }
-    .neon-red { color: #ff3366; text-shadow: 0 0 10px rgba(255,51,102,0.3); }
-    .glass-card { 
-      background: linear-gradient(135deg, rgba(18, 24, 38, 0.85), rgba(10, 14, 23, 0.95)); 
-      border: 1px solid rgba(255, 255, 255, 0.08); 
-      backdrop-filter: blur(12px);
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
-    .glass-card:hover { border-color: rgba(0, 255, 136, 0.2); }
-    .input-field { 
-      background-color: rgba(6, 8, 14, 0.8); 
-      border: 1px solid rgba(255, 255, 255, 0.1); 
-      color: white; 
-      padding: 8px 12px; 
-      border-radius: 6px; 
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .input-field {
+      background-color: rgba(15, 23, 42, 0.7);
+      border: 1px solid #1e293b;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
       font-size: 12px;
-      transition: all 0.2s ease;
+      width: 100%;
+      transition: all 0.15s ease;
     }
-    .input-field:focus { border-color: #00ff88; outline: none; box-shadow: 0 0 8px rgba(0,255,136,0.3); }
+    .input-field:focus { border-color: #00E599; outline: none; box-shadow: 0 0 0 2px rgba(0,229,153,0.15); }
     .glow-btn {
-      background: linear-gradient(135deg, #00ff88, #00b862);
-      box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
-      transition: all 0.2s ease;
+      background: linear-gradient(135deg, #00E599, #00b876);
+      box-shadow: 0 0 12px rgba(0, 229, 153, 0.25);
+      transition: all 0.15s ease;
     }
-    .glow-btn:hover { box-shadow: 0 0 25px rgba(0, 255, 136, 0.7); transform: translateY(-1px); }
+    .glow-btn:hover { box-shadow: 0 0 20px rgba(0, 229, 153, 0.5); transform: translateY(-1px); }
+    .card { background: #131b2e; border: 1px solid #1e293b; border-radius: 1rem; }
   </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="bg-bgDark text-gray-200 antialiased">
   <div id="root"></div>
 
   <script type="text/babel">
-    const SUPABASE_URL = "https://uydgnqqmkmoemmyrorbg.supabase.co"; 
-    const SUPABASE_ANON_KEY = "sb_publishable_IaI9Dt8lIL2m2-cIrq9Gug_NdeWchok"; 
+    const { useState, useEffect, useRef, useMemo } = React;
 
-    // Enable session persistence in LocalStorage
+    const SUPABASE_URL = "https://uydgnqqmkmoemmyrorbg.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_IaI9Dt8lIL2m2-cIrq9Gug_NdeWchok";
+
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      }
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
+
+    const EMOTIONS = ['Focus', 'Discipline', 'Fear', 'Greed', 'FOMO', 'Anger', 'Boredom'];
+    const SETUPS = ['Onion play', 'Celery', 'Inverted celery', 'Breakout', 'Fade', 'Packrunner'];
+    const NAV_ITEMS = [
+      { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+      { id: 'trades', label: 'Trades', icon: '📈' },
+      { id: 'calendar', label: 'Calendar', icon: '🗓️' },
+      { id: 'expenses', label: 'Expenses', icon: '💳' },
+      { id: 'journal', label: 'Journal', icon: '📓' }
+    ];
 
     const compressImage = (file, callback) => {
       const reader = new FileReader();
@@ -71,23 +86,12 @@
         img.onload = () => {
           const canvas = document.createElement('canvas');
           const maxDim = 800;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height && width > maxDim) {
-            height *= maxDim / width;
-            width = maxDim;
-          } else if (height > maxDim) {
-            width *= maxDim / height;
-            height = maxDim;
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          callback(compressedDataUrl);
+          let width = img.width, height = img.height;
+          if (width > height && width > maxDim) { height *= maxDim / width; width = maxDim; }
+          else if (height > maxDim) { width *= maxDim / height; height = maxDim; }
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          callback(canvas.toDataURL('image/jpeg', 0.7));
         };
         img.src = event.target.result;
       };
@@ -95,135 +99,96 @@
     };
 
     function App() {
-      const [session, setSession] = React.useState(null);
-      const [loadingAuth, setLoadingAuth] = React.useState(true);
-      const [authMode, setAuthMode] = React.useState('login'); 
-      const [email, setEmail] = React.useState('');
-      const [password, setPassword] = React.useState('');
-      const [authError, setAuthError] = React.useState('');
-      const [authMsg, setAuthMsg] = React.useState('');
+      const [session, setSession] = useState(null);
+      const [loadingAuth, setLoadingAuth] = useState(true);
+      const [authMode, setAuthMode] = useState('login');
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [authError, setAuthError] = useState('');
+      const [authMsg, setAuthMsg] = useState('');
 
-      const [activeTab, setActiveTab] = React.useState('dashboard');
-      const [selectedAccountFilter, setSelectedAccountFilter] = React.useState('ALL');
-      const [trades, setTrades] = React.useState([]);
-      const [expenses, setExpenses] = React.useState([]);
+      const [activeTab, setActiveTab] = useState('dashboard');
+      const [selectedAccountFilter, setSelectedAccountFilter] = useState('ALL');
+      const [trades, setTrades] = useState([]);
+      const [expenses, setExpenses] = useState([]);
 
-      const [calendarDate, setCalendarDate] = React.useState(new Date());
-      const [journalDate, setJournalDate] = React.useState(new Date().toISOString().split('T')[0]);
-      const [marketNotes, setMarketNotes] = React.useState('');
-      const [personalNotes, setPersonalNotes] = React.useState('');
+      const [calendarDate, setCalendarDate] = useState(new Date());
+      const [journalDate, setJournalDate] = useState(new Date().toISOString().split('T')[0]);
+      const [marketNotes, setMarketNotes] = useState('');
+      const [personalNotes, setPersonalNotes] = useState('');
 
-      const [formData, setFormData] = React.useState({ 
+      const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
-        symbol: 'NQ', assetClass: 'Futures', accountType: 'Funded', entry: '', exit: '', size: '', type: 'BUY', 
-        pnl: '', setup: 'Onion play', emotion: 'Focus', mistake: 'None', chartUrl: ''
+        symbol: 'NQ', accountType: 'Funded', entry: '', exit: '', size: '', type: 'BUY',
+        pnl: '', setup: 'Onion play', emotion: 'Focus', chartUrl: ''
       });
 
-      const [expenseForm, setExpenseForm] = React.useState({
+      const [expenseForm, setExpenseForm] = useState({
         date: new Date().toISOString().split('T')[0],
         firmName: 'Apex Trader Funding', accountSize: '50K', cost: '', status: 'Active'
       });
 
-      const winLossChartRef = React.useRef(null);
-      const equityChartRef = React.useRef(null);
-      const winLossChartInstance = React.useRef(null);
-      const equityChartInstance = React.useRef(null);
+      // chart refs
+      const miniDonutRef = useRef(null);
+      const radarRef = useRef(null);
+      const dailyPnlRef = useRef(null);
+      const equityRef = useRef(null);
+      const setupPerfRef = useRef(null);
+      const symbolPerfRef = useRef(null);
+      const chartInstances = useRef({});
 
-      // Authenticate & load persistent session
-      React.useEffect(() => {
+      useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
           setSession(session);
-          if (session) {
-            fetchUserTrades(session.user.id);
-            fetchExpenses(session.user.id);
-          }
+          if (session) { fetchUserTrades(session.user.id); fetchExpenses(session.user.id); }
           setLoadingAuth(false);
         });
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
           setSession(session);
-          if (session) {
-            fetchUserTrades(session.user.id);
-            fetchExpenses(session.user.id);
-          }
+          if (session) { fetchUserTrades(session.user.id); fetchExpenses(session.user.id); }
           setLoadingAuth(false);
         });
-
         return () => subscription.unsubscribe();
       }, []);
 
-      React.useEffect(() => {
-        if (session) fetchJournalEntry(journalDate);
-      }, [journalDate, session]);
+      useEffect(() => { if (session) fetchJournalEntry(journalDate); }, [journalDate, session]);
 
       const fetchUserTrades = async (userId) => {
-        const { data, error } = await supabase
-          .from('trades')
-          .select('*')
-          .eq('user_id', userId)
-          .order('id', { ascending: true });
-
+        const { data, error } = await supabase.from('trades').select('*').eq('user_id', userId).order('id', { ascending: true });
         if (!error && data) setTrades(data);
       };
 
       const fetchExpenses = async (userId) => {
-        const { data, error } = await supabase
-          .from('account_expenses')
-          .select('*')
-          .eq('user_id', userId)
-          .order('date', { ascending: false });
-
+        const { data, error } = await supabase.from('account_expenses').select('*').eq('user_id', userId).order('date', { ascending: false });
         if (!error && data) setExpenses(data);
       };
 
       const fetchJournalEntry = async (dateStr) => {
-        const { data } = await supabase
-          .from('journal_entries')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .eq('date', dateStr)
-          .maybeSingle();
-
-        if (data) {
-          setMarketNotes(data.market_notes || '');
-          setPersonalNotes(data.personal_notes || '');
-        } else {
-          setMarketNotes('');
-          setPersonalNotes('');
-        }
+        const { data } = await supabase.from('journal_entries').select('*').eq('user_id', session.user.id).eq('date', dateStr).maybeSingle();
+        if (data) { setMarketNotes(data.market_notes || ''); setPersonalNotes(data.personal_notes || ''); }
+        else { setMarketNotes(''); setPersonalNotes(''); }
       };
 
       const saveJournalEntry = async () => {
         const { error } = await supabase.from('journal_entries').upsert({
-          user_id: session.user.id,
-          date: journalDate,
-          market_notes: marketNotes,
-          personal_notes: personalNotes
+          user_id: session.user.id, date: journalDate, market_notes: marketNotes, personal_notes: personalNotes
         }, { onConflict: 'user_id,date' });
-
-        if (!error) alert("Journal entry successfully saved to database!");
-        else alert("Error saving journal: " + error.message);
+        if (!error) alert("Journal entry saved!"); else alert("Error saving journal: " + error.message);
       };
 
       const handleDeleteTrade = async (tradeId) => {
         if (window.confirm("Delete this execution?")) {
           const { error } = await supabase.from('trades').delete().eq('id', tradeId);
-          if (!error) fetchUserTrades(session.user.id);
-          else alert("Error deleting trade: " + error.message);
+          if (!error) fetchUserTrades(session.user.id); else alert("Error deleting trade: " + error.message);
         }
       };
 
       const handleAddExpense = async (e) => {
         e.preventDefault();
         const newExpense = {
-          user_id: session.user.id,
-          date: expenseForm.date,
-          firm_name: expenseForm.firmName,
-          account_size: expenseForm.accountSize,
-          cost: parseFloat(expenseForm.cost || 0),
-          status: expenseForm.status
+          user_id: session.user.id, date: expenseForm.date, firm_name: expenseForm.firmName,
+          account_size: expenseForm.accountSize, cost: parseFloat(expenseForm.cost || 0), status: expenseForm.status
         };
-
         const { error } = await supabase.from('account_expenses').insert([newExpense]);
         if (!error) {
           setExpenseForm({ date: new Date().toISOString().split('T')[0], firmName: 'Apex Trader Funding', accountSize: '50K', cost: '', status: 'Active' });
@@ -236,230 +201,166 @@
         if (!error) fetchExpenses(session.user.id);
       };
 
-      const filteredTrades = React.useMemo(() => {
+      const filteredTrades = useMemo(() => {
         if (selectedAccountFilter === 'ALL') return trades;
         return trades.filter(t => (t.account_type || 'Live') === selectedAccountFilter);
       }, [trades, selectedAccountFilter]);
 
-      React.useEffect(() => {
-        if (activeTab === 'dashboard' && session && filteredTrades.length > 0) {
-          if (winLossChartRef.current) {
-            if (winLossChartInstance.current) winLossChartInstance.current.destroy();
-            const wins = filteredTrades.filter(t => Number(t.pnl) > 0).length;
-            const losses = filteredTrades.filter(t => Number(t.pnl) < 0).length;
-            const breakevens = filteredTrades.filter(t => Number(t.pnl) === 0).length;
-
-            winLossChartInstance.current = new Chart(winLossChartRef.current, {
-              type: 'doughnut',
-              data: {
-                labels: ['Wins', 'Losses', 'Breakeven'],
-                datasets: [{
-                  data: [wins, losses, breakevens],
-                  backgroundColor: ['#00ff88', '#ff3366', '#64748b'],
-                  borderWidth: 0
-                }]
-              },
-              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } } }
-            });
-          }
-
-          if (equityChartRef.current) {
-            if (equityChartInstance.current) equityChartInstance.current.destroy();
-            let runningTotal = 0;
-            const equityData = filteredTrades.map(t => {
-              runningTotal += Number(t.pnl || 0);
-              return runningTotal;
-            });
-
-            equityChartInstance.current = new Chart(equityChartRef.current, {
-              type: 'line',
-              data: {
-                labels: filteredTrades.map((_, i) => `#${i + 1}`),
-                datasets: [{
-                  label: 'Cumulative P&L ($)',
-                  data: equityData,
-                  borderColor: '#00ff88',
-                  backgroundColor: 'rgba(0, 255, 136, 0.05)',
-                  fill: true,
-                  tension: 0.3
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                  x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                  y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } }
-                },
-                plugins: { legend: { display: false } }
-              }
-            });
-          }
-        }
-      }, [filteredTrades, activeTab, session]);
-
       const handleAuth = async (e) => {
-        e.preventDefault();
-        setAuthError('');
-        setAuthMsg('');
-
+        e.preventDefault(); setAuthError(''); setAuthMsg('');
         if (authMode === 'login') {
           const { error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) setAuthError(error.message);
         } else if (authMode === 'signup') {
           const { error } = await supabase.auth.signUp({ email, password });
-          if (error) setAuthError(error.message);
-          else setAuthMsg("Account created! You can now log in.");
+          if (error) setAuthError(error.message); else setAuthMsg("Account created! You can now log in.");
         } else if (authMode === 'forgot') {
-          const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin
-          });
-          if (error) setAuthError(error.message);
-          else setAuthMsg("Password reset email sent!");
+          const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+          if (error) setAuthError(error.message); else setAuthMsg("Password reset email sent!");
         }
       };
 
-      const handleLogout = async () => {
-        await supabase.auth.signOut();
-        setSession(null);
-        setTrades([]);
-      };
+      const handleLogout = async () => { await supabase.auth.signOut(); setSession(null); setTrades([]); };
 
       const handleImagePaste = (e) => {
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
           if (items[i].type.indexOf("image") !== -1) {
-            const file = items[i].getAsFile();
-            compressImage(file, (compressedBase64) => {
-              setFormData(prev => ({ ...prev, chartUrl: compressedBase64 }));
-            });
+            compressImage(items[i].getAsFile(), (b64) => setFormData(prev => ({ ...prev, chartUrl: b64 })));
           }
         }
       };
 
       const handleImageFileUpload = (e) => {
         const file = e.target.files[0];
-        if (file) {
-          compressImage(file, (compressedBase64) => {
-            setFormData(prev => ({ ...prev, chartUrl: compressedBase64 }));
-          });
-        }
+        if (file) compressImage(file, (b64) => setFormData(prev => ({ ...prev, chartUrl: b64 })));
       };
 
       const handleSubmit = async (e) => {
         e.preventDefault();
         if (!session) return alert("Session expired. Please log in again.");
-
         let calculatedPnl = formData.pnl;
         if (!calculatedPnl && formData.entry && formData.exit && formData.size) {
-          const entry = parseFloat(formData.entry);
-          const exit = parseFloat(formData.exit);
-          const size = parseFloat(formData.size);
-          calculatedPnl = (formData.type === 'CALL' || formData.type === 'BUY') 
-            ? ((exit - entry) * size).toFixed(2) 
-            : ((entry - exit) * size).toFixed(2);
+          const entry = parseFloat(formData.entry), exit = parseFloat(formData.exit), size = parseFloat(formData.size);
+          calculatedPnl = (formData.type === 'BUY') ? ((exit - entry) * size).toFixed(2) : ((entry - exit) * size).toFixed(2);
         }
-
-        const newTrade = { 
-          date: formData.date,
-          symbol: formData.symbol,
+        const newTrade = {
+          date: formData.date, symbol: formData.symbol,
           entry: formData.entry ? parseFloat(formData.entry) : null,
           exit: formData.exit ? parseFloat(formData.exit) : null,
           size: formData.size ? parseFloat(formData.size) : null,
-          type: formData.type,
-          pnl: parseFloat(calculatedPnl || 0),
-          setup: formData.setup,
-          emotion: formData.emotion,
-          account_type: formData.accountType,
-          chart_url: formData.chartUrl || null,
-          user_id: session.user.id 
+          type: formData.type, pnl: parseFloat(calculatedPnl || 0),
+          setup: formData.setup, emotion: formData.emotion,
+          account_type: formData.accountType, chart_url: formData.chartUrl || null,
+          user_id: session.user.id
         };
-
         const { error } = await supabase.from('trades').insert([newTrade]);
         if (!error) {
-          setFormData({ 
-            date: new Date().toISOString().split('T')[0],
-            symbol: 'NQ', assetClass: 'Futures', accountType: 'Funded', entry: '', exit: '', size: '', type: 'BUY', 
-            pnl: '', setup: 'Onion play', emotion: 'Focus', mistake: 'None', chartUrl: ''
+          setFormData({
+            date: new Date().toISOString().split('T')[0], symbol: 'NQ', accountType: 'Funded',
+            entry: '', exit: '', size: '', type: 'BUY', pnl: '', setup: 'Onion play', emotion: 'Focus', chartUrl: ''
           });
           fetchUserTrades(session.user.id);
-        } else {
-          alert("Database Error: " + error.message);
-        }
+        } else alert("Database Error: " + error.message);
       };
 
       const exportCSV = () => {
         if (filteredTrades.length === 0) return alert("No trades to export.");
-        const headers = ["Date", "Account", "Symbol", "Type", "Entry", "Exit", "Size", "Setup", "P&L"];
-        const rows = filteredTrades.map(t => [
-          t.date, t.account_type || 'Live', t.symbol, t.type, t.entry, t.exit, t.size, t.setup, t.pnl
-        ]);
+        const headers = ["Date", "Account", "Symbol", "Type", "Entry", "Exit", "Size", "Setup", "Emotion", "P&L"];
+        const rows = filteredTrades.map(t => [t.date, t.account_type || 'Live', t.symbol, t.type, t.entry, t.exit, t.size, t.setup, t.emotion, t.pnl]);
         const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-        const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
+        link.setAttribute("href", encodeURI(csvContent));
         link.setAttribute("download", `trading_journal_${selectedAccountFilter}_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
       };
 
       const importCSV = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = async (event) => {
-          const text = event.target.result;
-          const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+          const lines = event.target.result.split("\n").map(l => l.trim()).filter(l => l.length > 0);
           if (lines.length < 2) return alert("Invalid CSV format.");
-
           const newTrades = [];
           for (let i = 1; i < lines.length; i++) {
             const cols = lines[i].split(",");
             if (cols.length >= 8) {
               newTrades.push({
-                date: cols[0],
-                account_type: cols[1] || 'Live',
-                symbol: cols[2],
-                type: cols[3],
-                entry: parseFloat(cols[4]) || 0,
-                exit: parseFloat(cols[5]) || 0,
-                size: parseFloat(cols[6]) || 0,
-                setup: cols[7] || 'Onion play',
-                pnl: parseFloat(cols[8]) || 0,
+                date: cols[0], account_type: cols[1] || 'Live', symbol: cols[2], type: cols[3],
+                entry: parseFloat(cols[4]) || 0, exit: parseFloat(cols[5]) || 0, size: parseFloat(cols[6]) || 0,
+                setup: cols[7] || 'Onion play', emotion: cols[8] || 'Focus', pnl: parseFloat(cols[9]) || 0,
                 user_id: session.user.id
               });
             }
           }
-
           if (newTrades.length > 0) {
             const { error } = await supabase.from('trades').insert(newTrades);
-            if (!error) {
-              alert(`Successfully imported ${newTrades.length} trades!`);
-              fetchUserTrades(session.user.id);
-            } else alert("Import failed: " + error.message);
+            if (!error) { alert(`Successfully imported ${newTrades.length} trades!`); fetchUserTrades(session.user.id); }
+            else alert("Import failed: " + error.message);
           }
         };
         reader.readAsText(file);
       };
 
+      // ---------- derived stats (all computed from real trade data) ----------
       const totalPnl = filteredTrades.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
       const winsList = filteredTrades.filter(t => Number(t.pnl) > 0);
       const lossesList = filteredTrades.filter(t => Number(t.pnl) < 0);
-      
       const totalWinDollar = winsList.reduce((acc, t) => acc + Number(t.pnl), 0);
       const totalLossDollar = Math.abs(lossesList.reduce((acc, t) => acc + Number(t.pnl), 0));
-
-      const profitFactor = totalLossDollar > 0 ? (totalWinDollar / totalLossDollar).toFixed(2) : totalWinDollar > 0 ? '∞' : '0.00';
+      const profitFactor = totalLossDollar > 0 ? (totalWinDollar / totalLossDollar).toFixed(2) : (totalWinDollar > 0 ? '∞' : '0.00');
       const winRate = filteredTrades.length > 0 ? Math.round((winsList.length / filteredTrades.length) * 100) : 0;
+      const avgTrade = filteredTrades.length > 0 ? (totalPnl / filteredTrades.length) : 0;
+      const avgWin = winsList.length > 0 ? (totalWinDollar / winsList.length) : 0;
+      const avgLoss = lossesList.length > 0 ? (totalLossDollar / lossesList.length) : 0;
+      const avgWinLossRatio = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : (avgWin > 0 ? '∞' : '0.00');
+      const largestWin = winsList.length > 0 ? Math.max(...winsList.map(t => Number(t.pnl))) : 0;
+      const largestLoss = lossesList.length > 0 ? Math.min(...lossesList.map(t => Number(t.pnl))) : 0;
+
+      const dayMap = {};
+      filteredTrades.forEach(t => {
+        if (!t.date) return;
+        if (!dayMap[t.date]) dayMap[t.date] = 0;
+        dayMap[t.date] += Number(t.pnl || 0);
+      });
+      const dayEntries = Object.entries(dayMap).sort((a, b) => a[0].localeCompare(b[0]));
+      const greenDays = dayEntries.filter(([, v]) => v > 0).length;
+      const dayWinRate = dayEntries.length > 0 ? Math.round((greenDays / dayEntries.length) * 100) : 0;
+
+      const emotionMap = {};
+      filteredTrades.forEach(t => {
+        const emo = t.emotion || 'Unspecified';
+        if (!emotionMap[emo]) emotionMap[emo] = { count: 0, wins: 0, pnl: 0 };
+        emotionMap[emo].count += 1;
+        emotionMap[emo].pnl += Number(t.pnl || 0);
+        if (Number(t.pnl) > 0) emotionMap[emo].wins += 1;
+      });
+      const emotionStats = Object.entries(emotionMap).map(([emo, d]) => ({
+        emotion: emo, count: d.count, winRate: d.count > 0 ? Math.round((d.wins / d.count) * 100) : 0, avgPnl: d.count > 0 ? d.pnl / d.count : 0
+      })).sort((a, b) => b.count - a.count);
+      const dominantEmotion = emotionStats.length > 0 ? emotionStats[0] : null;
+
+      const setupMap = {};
+      filteredTrades.forEach(t => { const s = t.setup || 'Unspecified'; setupMap[s] = (setupMap[s] || 0) + Number(t.pnl || 0); });
+      const setupEntries = Object.entries(setupMap).sort((a, b) => b[1] - a[1]);
+      const bestSetup = setupEntries.length > 0 ? setupEntries[0] : null;
+
+      const symbolMap = {};
+      filteredTrades.forEach(t => { const s = t.symbol || 'N/A'; symbolMap[s] = (symbolMap[s] || 0) + Number(t.pnl || 0); });
+      const symbolEntries = Object.entries(symbolMap).sort((a, b) => b[1] - a[1]);
+      const bestSymbol = symbolEntries.length > 0 ? symbolEntries[0] : null;
+
+      let longestStreak = 0, currentStreak = 0;
+      filteredTrades.forEach(t => {
+        if (Number(t.pnl) > 0) { currentStreak += 1; longestStreak = Math.max(longestStreak, currentStreak); }
+        else currentStreak = 0;
+      });
 
       const renderCalendarDays = () => {
-        const year = calendarDate.getFullYear();
-        const month = calendarDate.getMonth();
+        const year = calendarDate.getFullYear(), month = calendarDate.getMonth();
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-
         const tradesByDate = {};
         filteredTrades.forEach(t => {
           if (!t.date) return;
@@ -467,33 +368,20 @@
           tradesByDate[t.date].count += 1;
           tradesByDate[t.date].pnl += Number(t.pnl || 0);
         });
-
         const cells = [];
-        for (let i = 0; i < firstDay; i++) {
-          cells.push(<div key={`empty-${i}`} className="h-24 bg-black/20 rounded-lg border border-gray-900"></div>);
-        }
-
+        for (let i = 0; i < firstDay; i++) cells.push(<div key={`empty-${i}`} className="h-24 bg-black/20 rounded-lg border border-cardBorder/50"></div>);
         for (let day = 1; day <= daysInMonth; day++) {
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const dayData = tradesByDate[dateStr];
-
           cells.push(
-            <div key={day} className={`h-24 p-2 rounded-lg border flex flex-col justify-between transition-all ${dayData ? (dayData.pnl >= 0 ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30') : 'bg-black/40 border-gray-800'}`}>
+            <div key={day} className={`h-24 p-2 rounded-lg border flex flex-col justify-between transition-all ${dayData ? (dayData.pnl >= 0 ? 'bg-accentGreen/10 border-accentGreen/30' : 'bg-accentRed/10 border-accentRed/30') : 'bg-black/20 border-cardBorder/50'}`}>
               <div className="flex justify-between items-center text-xs font-bold">
                 <span className="text-gray-400">{day}</span>
-                {dayData && (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-800 font-mono text-gray-300">
-                    {dayData.count} {dayData.count === 1 ? 'trade' : 'trades'}
-                  </span>
-                )}
+                {dayData && <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 font-mono text-gray-300">{dayData.count} {dayData.count === 1 ? 'trade' : 'trades'}</span>}
               </div>
               {dayData ? (
-                <div className={`text-sm font-black mono text-right ${dayData.pnl >= 0 ? 'neon-green' : 'neon-red'}`}>
-                  ${dayData.pnl.toFixed(2)}
-                </div>
-              ) : (
-                <div className="text-[10px] text-gray-600 text-right font-mono">-</div>
-              )}
+                <div className={`text-sm font-black mono text-right ${dayData.pnl >= 0 ? 'text-accentGreen' : 'text-accentRed'}`}>${dayData.pnl.toFixed(2)}</div>
+              ) : (<div className="text-[10px] text-gray-600 text-right font-mono">-</div>)}
             </div>
           );
         }
@@ -501,10 +389,8 @@
       };
 
       const calculateWeeklyBreakdown = () => {
-        const year = calendarDate.getFullYear();
-        const month = calendarDate.getMonth();
+        const year = calendarDate.getFullYear(), month = calendarDate.getMonth();
         const weeks = [0, 0, 0, 0, 0];
-
         filteredTrades.forEach(t => {
           if (!t.date) return;
           const [dYear, dMonth, dDay] = t.date.split('-').map(Number);
@@ -513,71 +399,148 @@
             weeks[weekIdx] += Number(t.pnl || 0);
           }
         });
-
-        const greenWeeks = weeks.filter(w => w > 0).length;
-        const redWeeks = weeks.filter(w => w < 0).length;
-
-        return { weeks, greenWeeks, redWeeks };
+        return { weeks, greenWeeks: weeks.filter(w => w > 0).length, redWeeks: weeks.filter(w => w < 0).length };
       };
+
+      // ---------- dashboard charts (real data) ----------
+      useEffect(() => {
+        if (activeTab !== 'dashboard' || !session) return;
+        const destroy = (key) => { if (chartInstances.current[key]) { chartInstances.current[key].destroy(); delete chartInstances.current[key]; } };
+        const gridColor = '#1e293b', tickColor = '#64748b';
+
+        if (miniDonutRef.current) {
+          destroy('donut');
+          chartInstances.current.donut = new Chart(miniDonutRef.current, {
+            type: 'doughnut',
+            data: { datasets: [{ data: [winsList.length, lossesList.length], backgroundColor: ['#00E599', '#FF4D4D'], borderWidth: 0 }] },
+            options: { cutout: '75%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+          });
+        }
+
+        if (radarRef.current) {
+          destroy('radar');
+          const radarProfitFactor = profitFactor === '∞' ? 100 : Math.min(100, Number(profitFactor) * 20);
+          const radarAvgRR = avgWinLossRatio === '∞' ? 100 : Math.min(100, Number(avgWinLossRatio) * 40);
+          const radarVolume = Math.min(100, (filteredTrades.length / 50) * 100);
+          chartInstances.current.radar = new Chart(radarRef.current, {
+            type: 'radar',
+            data: {
+              labels: ['Win Rate', 'Profit Factor', 'Day Consistency', 'Avg R:R', 'Volume'],
+              datasets: [{ data: [winRate, radarProfitFactor, dayWinRate, radarAvgRR, radarVolume], backgroundColor: 'rgba(0,229,153,0.2)', borderColor: '#00E599', pointBackgroundColor: '#00E599' }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              scales: { r: { angleLines: { color: gridColor }, grid: { color: gridColor }, pointLabels: { color: tickColor, font: { size: 10 } }, ticks: { display: false } } },
+              plugins: { legend: { display: false } }
+            }
+          });
+        }
+
+        if (dailyPnlRef.current) {
+          destroy('daily');
+          chartInstances.current.daily = new Chart(dailyPnlRef.current, {
+            type: 'bar',
+            data: { labels: dayEntries.map(([d]) => d.slice(5)), datasets: [{ data: dayEntries.map(([, v]) => v), backgroundColor: (ctx) => ctx.raw >= 0 ? '#00E599' : '#FF4D4D', borderRadius: 4 }] },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              scales: { x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 9 } } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } } },
+              plugins: { legend: { display: false } }
+            }
+          });
+        }
+
+        if (equityRef.current) {
+          destroy('equity');
+          let running = 0;
+          const equityData = filteredTrades.map(t => { running += Number(t.pnl || 0); return running; });
+          chartInstances.current.equity = new Chart(equityRef.current, {
+            type: 'line',
+            data: { labels: filteredTrades.map((_, i) => `#${i + 1}`), datasets: [{ data: equityData, borderColor: '#00E599', backgroundColor: 'rgba(0,229,153,0.08)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 }] },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              scales: { x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } } },
+              plugins: { legend: { display: false } }
+            }
+          });
+        }
+
+        if (setupPerfRef.current) {
+          destroy('setup');
+          chartInstances.current.setup = new Chart(setupPerfRef.current, {
+            type: 'bar',
+            data: { labels: setupEntries.map(([s]) => s), datasets: [{ data: setupEntries.map(([, v]) => v), backgroundColor: (ctx) => ctx.raw >= 0 ? '#00E599' : '#FF4D4D', borderRadius: 4 }] },
+            options: {
+              indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+              scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } }, y: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } } },
+              plugins: { legend: { display: false } }
+            }
+          });
+        }
+
+        if (symbolPerfRef.current) {
+          destroy('symbol');
+          chartInstances.current.symbol = new Chart(symbolPerfRef.current, {
+            type: 'bar',
+            data: { labels: symbolEntries.map(([s]) => s), datasets: [{ data: symbolEntries.map(([, v]) => v), backgroundColor: (ctx) => ctx.raw >= 0 ? '#06B6D4' : '#FF4D4D', borderRadius: 4 }] },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              scales: { x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } } } },
+              plugins: { legend: { display: false } }
+            }
+          });
+        }
+      }, [filteredTrades, activeTab, session]);
 
       if (loadingAuth) {
         return (
-          <div className="flex min-h-screen items-center justify-center">
-            <div className="text-emerald-400 font-mono text-sm animate-pulse">⚡ CONNECTING TO TERMINAL...</div>
+          <div className="flex min-h-screen items-center justify-center bg-bgDark">
+            <div className="text-accentGreen font-mono text-sm animate-pulse">⚡ CONNECTING TO TERMINAL...</div>
           </div>
         );
       }
 
       if (!session) {
         return (
-          <div className="max-w-md mx-auto mt-16 glass-card p-8 rounded-2xl border border-emerald-500/20 space-y-6">
-            <div className="text-center space-y-2">
-              <div className="inline-block p-3 bg-emerald-500/10 rounded-full border border-emerald-500/30 mb-2">
-                <span className="text-3xl">⚡</span>
-              </div>
-              <h1 className="text-3xl font-black tracking-wider text-white">ADVANCED<span className="neon-green">HUB</span></h1>
-              <p className="text-xs text-gray-400 tracking-widest uppercase">Institutional Performance Terminal</p>
-            </div>
-
-            <form onSubmit={handleAuth} className="space-y-4">
-              <div>
-                <label className="text-xs text-gray-400 font-semibold block mb-1">TRADER EMAIL</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="input-field w-full py-2.5" placeholder="trader@terminal.com" required />
-              </div>
-              
-              {authMode !== 'forgot' && (
-                <div>
-                  <label className="text-xs text-gray-400 font-semibold block mb-1">PASSWORD</label>
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="input-field w-full py-2.5" placeholder="••••••••••••" required={authMode !== 'forgot'} />
+          <div className="min-h-screen bg-bgDark flex items-center justify-center p-4">
+            <div className="max-w-md w-full card p-8 space-y-6">
+              <div className="text-center space-y-2">
+                <div className="inline-block p-3 bg-accentGreen/10 rounded-full border border-accentGreen/30 mb-2">
+                  <span className="text-3xl">⚡</span>
                 </div>
-              )}
-
-              {authError && <p className="text-xs text-red-400 font-mono bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>}
-              {authMsg && <p className="text-xs text-emerald-400 font-mono bg-emerald-500/10 p-2 rounded border border-emerald-500/20">{authMsg}</p>}
-
-              <button type="submit" className="w-full glow-btn text-black font-extrabold py-3 rounded-lg text-xs tracking-wider uppercase mt-2">
-                {authMode === 'login' && 'ACCESS TERMINAL'}
-                {authMode === 'signup' && 'INITIALIZE ACCOUNT'}
-                {authMode === 'forgot' && 'SEND RESET LINK'}
-              </button>
-            </form>
-
-            <div className="flex justify-between items-center pt-2 text-xs text-gray-400">
-              {authMode === 'forgot' ? (
-                <button onClick={() => { setAuthMode('login'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
-                  ← Back to Login
+                <h1 className="text-3xl font-black tracking-wider text-white">TRADE<span className="text-accentGreen">HUB</span></h1>
+                <p className="text-xs text-gray-400 tracking-widest uppercase">Performance & Mindset Terminal</p>
+              </div>
+              <form onSubmit={handleAuth} className="space-y-4">
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold block mb-1">TRADER EMAIL</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="input-field py-2.5" placeholder="trader@terminal.com" required />
+                </div>
+                {authMode !== 'forgot' && (
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold block mb-1">PASSWORD</label>
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="input-field py-2.5" placeholder="••••••••••••" required={authMode !== 'forgot'} />
+                  </div>
+                )}
+                {authError && <p className="text-xs text-accentRed font-mono bg-accentRed/10 p-2 rounded border border-accentRed/20">{authError}</p>}
+                {authMsg && <p className="text-xs text-accentGreen font-mono bg-accentGreen/10 p-2 rounded border border-accentGreen/20">{authMsg}</p>}
+                <button type="submit" className="w-full glow-btn text-black font-extrabold py-3 rounded-lg text-xs tracking-wider uppercase mt-2">
+                  {authMode === 'login' && 'ACCESS TERMINAL'}
+                  {authMode === 'signup' && 'INITIALIZE ACCOUNT'}
+                  {authMode === 'forgot' && 'SEND RESET LINK'}
                 </button>
-              ) : (
-                <>
-                  <button onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
-                    {authMode === 'login' ? "New Trader? Register" : "Back to Login"}
-                  </button>
-
-                  <button onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthMsg(''); }} className="hover:text-emerald-400 underline">
-                    Forgot Password?
-                  </button>
-                </>
-              )}
+              </form>
+              <div className="flex justify-between items-center pt-2 text-xs text-gray-400">
+                {authMode === 'forgot' ? (
+                  <button onClick={() => { setAuthMode('login'); setAuthError(''); setAuthMsg(''); }} className="hover:text-accentGreen underline">← Back to Login</button>
+                ) : (
+                  <>
+                    <button onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); setAuthMsg(''); }} className="hover:text-accentGreen underline">
+                      {authMode === 'login' ? "New Trader? Register" : "Back to Login"}
+                    </button>
+                    <button onClick={() => { setAuthMode('forgot'); setAuthError(''); setAuthMsg(''); }} className="hover:text-accentGreen underline">Forgot Password?</button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -586,390 +549,422 @@
       const { weeks, greenWeeks, redWeeks } = calculateWeeklyBreakdown();
 
       return (
-        <div className="max-w-[1400px] mx-auto space-y-6">
-          <div className="glass-card p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
-                <span className="text-2xl">⚡</span>
+        <div className="flex h-screen overflow-hidden bg-bgDark">
+          {/* SIDEBAR */}
+          <aside className="w-60 bg-cardDark/80 border-r border-cardBorder flex flex-col justify-between h-full overflow-y-auto shrink-0">
+            <div className="p-4 space-y-6">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-500 via-indigo-500 to-accentGreen flex items-center justify-center font-bold text-white text-lg shadow-lg">⚡</div>
+                <div>
+                  <h1 className="font-extrabold text-lg tracking-wider text-white leading-tight">TRADE<span className="text-accentGreen">HUB</span></h1>
+                  <p className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase">Performance Terminal</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-black tracking-wider text-white">ADVANCED<span className="neon-green">HUB</span></h1>
-                <p className="text-[10px] text-gray-400 tracking-widest uppercase flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  CONNECTED // {session.user.email}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 bg-black/60 p-1.5 rounded-lg border border-gray-800">
-              <span className="text-[10px] text-gray-400 font-bold px-2 uppercase">Account:</span>
-              {['ALL', 'Live', 'Funded', 'Demo'].map(acc => (
-                <button
-                  key={acc}
-                  onClick={() => setSelectedAccountFilter(acc)}
-                  className={`px-3 py-1 rounded text-xs font-extrabold uppercase transition-all ${selectedAccountFilter === acc ? 'bg-emerald-500 text-black' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {acc}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5 bg-black/40 p-1 rounded-lg border border-gray-800">
-                {['dashboard', 'calendar', 'expenses', 'journal'].map(tab => (
-                  <button 
-                    key={tab} 
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-3.5 py-2 rounded-md transition-all text-xs font-bold uppercase tracking-wide ${activeTab === tab ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
+              <nav className="space-y-1.5 text-sm font-medium">
+                {NAV_ITEMS.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition text-left ${activeTab === item.id ? 'bg-gradient-to-r from-indigo-900/50 to-accentGreen/10 text-white border border-accentGreen/30' : 'text-gray-400 hover:text-white hover:bg-slate-800/50 border border-transparent'}`}
                   >
-                    {tab}
+                    <span>{item.icon}</span> {item.label}
                   </button>
                 ))}
-              </div>
-
-              <button onClick={handleLogout} className="text-xs text-red-400 hover:text-red-300 border border-red-500/30 px-3 py-2 rounded-lg hover:bg-red-500/10 transition-all font-semibold">
-                EXIT
+              </nav>
+            </div>
+            <div className="p-4 space-y-3 border-t border-cardBorder">
+              <div className="text-[10px] text-gray-500 px-1 truncate">{session.user.email}</div>
+              <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-accentRed/30 text-accentRed hover:bg-accentRed/10 text-xs font-semibold transition">
+                🚪 Logout
               </button>
             </div>
-          </div>
+          </aside>
 
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-emerald-400">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Net P&L ({selectedAccountFilter})</p>
-                  <p className={`text-xl font-extrabold mono mt-1 ${totalPnl >= 0 ? 'neon-green' : 'neon-red'}`}>
-                    ${totalPnl.toFixed(2)}
-                  </p>
+          {/* MAIN */}
+          <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <header className="h-16 border-b border-cardBorder bg-cardDark/50 px-6 flex items-center justify-between shrink-0">
+              <span className="text-sm font-semibold text-gray-300">{NAV_ITEMS.find(n => n.id === activeTab)?.label}</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-cardBorder">
+                  {['ALL', 'Live', 'Funded', 'Demo'].map(acc => (
+                    <button key={acc} onClick={() => setSelectedAccountFilter(acc)} className={`px-3 py-1 rounded text-xs font-extrabold uppercase transition-all ${selectedAccountFilter === acc ? 'bg-accentGreen text-black' : 'text-gray-400 hover:text-white'}`}>
+                      {acc}
+                    </button>
+                  ))}
                 </div>
-                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-emerald-500">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Win Rate</p>
-                  <p className="text-xl font-extrabold text-white mono mt-1">{winRate}%</p>
-                </div>
-                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-blue-500">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Profit Factor</p>
-                  <p className="text-xl font-extrabold text-blue-400 mono mt-1">{profitFactor}</p>
-                </div>
-                <div className="glass-card p-3.5 rounded-xl border-l-4 border-l-yellow-500">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Total Trades</p>
-                  <p className="text-xl font-extrabold text-yellow-400 mono mt-1">{filteredTrades.length}</p>
-                </div>
+                <button onClick={() => setActiveTab('trades')} className="text-xs px-3.5 py-1.5 rounded-lg bg-accentGreen/10 border border-accentGreen/30 text-accentGreen font-semibold hover:bg-accentGreen/20 transition flex items-center gap-1">
+                  <span>+</span> Add Trade
+                </button>
               </div>
+            </header>
 
-              <div className="glass-card p-3 rounded-xl flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">📁 Data Portability</span>
-                <div className="flex gap-3">
-                  <label className="cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold px-3 py-1.5 rounded border border-gray-700 transition-all">
-                    📥 Import CSV
-                    <input type="file" accept=".csv" onChange={importCSV} className="hidden" />
-                  </label>
-                  <button onClick={exportCSV} className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 text-xs font-bold px-3 py-1.5 rounded transition-all">
-                    📤 Export CSV
-                  </button>
-                </div>
-              </div>
+            <main className="flex-1 overflow-y-auto p-6 space-y-6">
 
-              <form onSubmit={handleSubmit} className="glass-card p-5 rounded-xl space-y-4">
-                <div className="flex items-center justify-between border-b border-gray-800 pb-2">
-                  <h3 className="text-xs font-extrabold tracking-widest text-emerald-400 uppercase">⚡ Manual Execution Entry</h3>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Date</label>
-                    <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="input-field w-full" required />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Account</label>
-                    <select value={formData.accountType} onChange={e => setFormData({...formData, accountType: e.target.value})} className="input-field w-full font-bold">
-                      <option value="Live">Live Account</option>
-                      <option value="Funded">Funded Account</option>
-                      <option value="Demo">Demo Account</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Symbol</label>
-                    <input type="text" value={formData.symbol} onChange={e => setFormData({...formData, symbol: e.target.value})} className="input-field w-full uppercase" required />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Entry Price</label>
-                    <input type="number" step="any" value={formData.entry} onChange={e => setFormData({...formData, entry: e.target.value})} className="input-field w-full" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Exit Price</label>
-                    <input type="number" step="any" value={formData.exit} onChange={e => setFormData({...formData, exit: e.target.value})} className="input-field w-full" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Position Size</label>
-                    <input type="number" step="any" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} className="input-field w-full" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Direction</label>
-                    <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="input-field w-full font-bold">
-                      <option value="BUY">BUY / LONG</option>
-                      <option value="SELL">SELL / SHORT</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Net Return ($)</label>
-                    <input type="number" step="any" value={formData.pnl} onChange={e => setFormData({...formData, pnl: e.target.value})} className="input-field w-full font-bold" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Setup Tag</label>
-                    <select value={formData.setup} onChange={e => setFormData({...formData, setup: e.target.value})} className="input-field w-full">
-                      <option value="Onion play">Onion play</option>
-                      <option value="Celery">Celery</option>
-                      <option value="Inverted celery">Inverted celery</option>
-                      <option value="Breakout">Breakout</option>
-                      <option value="Fade">Fade</option>
-                      <option value="Packrunner">Packrunner</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">
-                      Screenshot (Paste Ctrl+V or File)
-                    </label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        value={formData.chartUrl ? (formData.chartUrl.startsWith('data:') ? '✅ [PHOTO ATTACHED]' : formData.chartUrl) : ''} 
-                        onChange={e => setFormData({...formData, chartUrl: e.target.value})} 
-                        onPaste={handleImagePaste}
-                        className="input-field w-full" 
-                        placeholder="Click here & Ctrl+V screenshot" 
-                      />
-                      <label className="cursor-pointer bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-2 rounded text-xs border border-gray-700 flex items-center justify-center font-bold">
-                        📷
-                        <input type="file" accept="image/*" onChange={handleImageFileUpload} className="hidden" />
-                      </label>
+              {activeTab === 'dashboard' && (
+                <div className="space-y-6">
+                  {/* KPI ROW */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="card p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium">Net P&L ({selectedAccountFilter})</span>
+                        <div className={`text-2xl font-black mt-1 ${totalPnl >= 0 ? 'text-accentGreen' : 'text-accentRed'}`}>${totalPnl.toFixed(2)}</div>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-accentGreen/10 border border-accentGreen/20 flex items-center justify-center text-accentGreen font-bold text-lg">$</div>
+                    </div>
+                    <div className="card p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium">Win Rate</span>
+                        <div className="text-2xl font-black text-accentGreen mt-1">{winRate}%</div>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-accentGreen/10 border border-accentGreen/20 flex items-center justify-center text-accentGreen text-lg">🎯</div>
+                    </div>
+                    <div className="card p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium">Profit Factor</span>
+                        <div className="text-2xl font-black text-accentCyan mt-1">{profitFactor}</div>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-accentCyan">📈</div>
+                    </div>
+                    <div className="card p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium">Avg Trade</span>
+                        <div className={`text-2xl font-black mt-1 ${avgTrade >= 0 ? 'text-accentGreen' : 'text-accentRed'}`}>${avgTrade.toFixed(2)}</div>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-accentGreen/10 border border-accentGreen/20 flex items-center justify-center text-accentGreen">↗️</div>
+                    </div>
+                    <div className="card p-4">
+                      <span className="text-xs text-gray-400 font-medium">Total Trades</span>
+                      <div className="text-2xl font-black text-white mt-1">{filteredTrades.length}</div>
+                    </div>
+                    <div className="card p-4">
+                      <span className="text-xs text-gray-400 font-medium">Day Win %</span>
+                      <div className="text-2xl font-black text-accentGreen mt-1">{dayWinRate}%</div>
+                      <div className="text-[11px] text-gray-400 mt-0.5">{dayEntries.length} days traded</div>
+                    </div>
+                    <div className="card p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium">Win/Loss Distribution</span>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-xl font-black text-accentGreen">{winsList.length}<span className="text-xs font-normal text-gray-400 block">Wins</span></span>
+                          <span className="text-xl font-black text-accentRed">{lossesList.length}<span className="text-xs font-normal text-gray-400 block">Losses</span></span>
+                        </div>
+                      </div>
+                      <div className="w-12 h-12"><canvas ref={miniDonutRef}></canvas></div>
+                    </div>
+                    <div className="card p-4">
+                      <span className="text-xs text-gray-400 font-medium">Avg Win/Loss Ratio</span>
+                      <div className="text-2xl font-black text-accentGreen mt-1">{avgWinLossRatio}</div>
+                      <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2 flex overflow-hidden">
+                        <div className="bg-accentGreen h-full" style={{ width: `${winsList.length ? Math.round((avgWin / (avgWin + avgLoss || 1)) * 100) : 0}%` }}></div>
+                        <div className="bg-accentRed h-full" style={{ width: `${lossesList.length ? Math.round((avgLoss / (avgWin + avgLoss || 1)) * 100) : 0}%` }}></div>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-gray-400 mt-1 font-mono">
+                        <span className="text-accentGreen">${avgWin.toFixed(2)}</span>
+                        <span className="text-accentRed">${avgLoss.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-end">
-                    <button type="submit" className="glow-btn text-black font-extrabold w-full py-2 rounded-lg text-xs tracking-wider uppercase">
-                      + RECORD TRADE
-                    </button>
+                  {/* EDGE ROW (all real, derived from actual trades) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="card p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium">Dominant Emotion</span>
+                        <div className="text-2xl font-black text-accentGreen mt-1">{dominantEmotion ? dominantEmotion.emotion : '—'}</div>
+                        <span className="text-[11px] text-gray-400">{dominantEmotion ? `Used in ${dominantEmotion.count} trades` : 'No trades yet'}</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-accentGreen/10 border border-accentGreen/20 flex items-center justify-center text-accentGreen">🧠</div>
+                    </div>
+                    <div className="card p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium">Best Setup</span>
+                        <div className="text-lg font-black text-accentGreen mt-1">{bestSetup ? bestSetup[0] : '—'}</div>
+                        <span className="text-[11px] text-gray-400">{bestSetup ? `+$${bestSetup[1].toFixed(2)} total` : 'No trades yet'}</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-accentGreen/10 border border-accentGreen/20 flex items-center justify-center text-accentGreen">📖</div>
+                    </div>
+                    <div className="card p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium">Best Symbol</span>
+                        <div className="text-lg font-black text-accentCyan mt-1">{bestSymbol ? bestSymbol[0] : '—'}</div>
+                        <span className="text-[11px] text-gray-400">{bestSymbol ? `$${bestSymbol[1].toFixed(2)} total` : 'No trades yet'}</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-accentCyan">💠</div>
+                    </div>
+                    <div className="card p-4 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs text-gray-400 font-medium">Longest Win Streak</span>
+                        <div className="text-2xl font-black text-accentGreen mt-1">{longestStreak}</div>
+                        <span className="text-[11px] text-gray-400">consecutive wins</span>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-accentGreen/10 border border-accentGreen/20 flex items-center justify-center text-accentGreen">🔥</div>
+                    </div>
+                  </div>
+
+                  {/* CHARTS ROW */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="card p-5 flex flex-col justify-between">
+                      <h3 className="text-sm font-bold text-white">Trading Mastery Score</h3>
+                      <div className="w-full h-64 my-2"><canvas ref={radarRef}></canvas></div>
+                      <div className="text-center text-xs text-gray-400 tracking-widest font-semibold uppercase">Derived from your data</div>
+                    </div>
+                    <div className="card p-5">
+                      <h3 className="text-sm font-bold text-white mb-4">Net Daily P&L</h3>
+                      <div className="w-full h-64"><canvas ref={dailyPnlRef}></canvas></div>
+                    </div>
+                    <div className="card p-5">
+                      <h3 className="text-sm font-bold text-white mb-4">Equity Curve</h3>
+                      <div className="w-full h-64"><canvas ref={equityRef}></canvas></div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 card p-5">
+                      <h3 className="text-sm font-bold text-white mb-4">P&L by Setup</h3>
+                      <div className="w-full h-56"><canvas ref={setupPerfRef}></canvas></div>
+                    </div>
+                    <div className="card p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-white">Recent Trades</h3>
+                        <button onClick={() => setActiveTab('trades')} className="text-xs text-accentGreen hover:underline">View All →</button>
+                      </div>
+                      <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                        {filteredTrades.length === 0 ? (
+                          <p className="text-xs text-gray-500">No trades yet.</p>
+                        ) : (
+                          [...filteredTrades].slice(-5).reverse().map(t => (
+                            <div key={t.id} className="p-3 bg-slate-900/50 rounded-xl border border-cardBorder flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-accentGreen/10 border border-accentGreen/20 flex items-center justify-center text-accentGreen">📈</div>
+                                <div>
+                                  <div className="text-sm font-bold text-white">{t.symbol}</div>
+                                  <div className="text-[10px] text-gray-400">{t.date} • {t.type}</div>
+                                </div>
+                              </div>
+                              <span className={`text-sm font-bold ${Number(t.pnl) >= 0 ? 'text-accentGreen' : 'text-accentRed'}`}>${Number(t.pnl).toFixed(2)}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="card p-5">
+                    <h3 className="text-sm font-bold text-white mb-4">P&L by Symbol</h3>
+                    <div className="w-full h-56"><canvas ref={symbolPerfRef}></canvas></div>
+                  </div>
+
+                  <div className="card p-5 space-y-4">
+                    <h3 className="text-sm font-bold text-white">Emotional Performance Breakdown</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs text-gray-300">
+                        <thead className="bg-slate-900/60 text-gray-400 font-semibold border-b border-cardBorder">
+                          <tr><th className="p-3">Emotion</th><th className="p-3">Trades</th><th className="p-3">Win Rate</th><th className="p-3">Avg P&L</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-cardBorder/50 font-mono">
+                          {emotionStats.length === 0 ? (
+                            <tr><td colSpan="4" className="p-6 text-center text-gray-500">No trades yet.</td></tr>
+                          ) : emotionStats.map(row => (
+                            <tr key={row.emotion}>
+                              <td className="p-3 font-semibold text-white">{row.emotion}</td>
+                              <td className="p-3">{row.count}</td>
+                              <td className={`p-3 ${row.winRate >= 50 ? 'text-accentGreen' : 'text-accentRed'}`}>{row.winRate}%</td>
+                              <td className={`p-3 ${row.avgPnl >= 0 ? 'text-accentGreen' : 'text-accentRed'}`}>${row.avgPnl.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
-              </form>
+              )}
 
-              <div className="glass-card rounded-xl p-5 overflow-x-auto">
-                <table className="w-full text-left text-xs text-gray-300 border-collapse">
-                  <thead className="border-b border-gray-800 text-gray-400 font-semibold uppercase text-[10px] tracking-wider">
-                    <tr>
-                      <th className="p-3">Result</th>
-                      <th className="p-3">Date</th>
-                      <th className="p-3">Account</th>
-                      <th className="p-3">Symbol</th>
-                      <th className="p-3">Type</th>
-                      <th className="p-3">Setup</th>
-                      <th className="p-3">Chart Photo</th>
-                      <th className="p-3 text-right">Return P&L</th>
-                      <th className="p-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTrades.length === 0 ? (
-                      <tr><td colSpan="9" className="p-8 text-center text-gray-500">No trades recorded for this account filter.</td></tr>
-                    ) : (
-                      filteredTrades.map(t => {
-                        const isWin = Number(t.pnl) >= 0;
-                        return (
-                          <tr key={t.id} className="border-b border-gray-800/40 hover:bg-white/[0.02]">
-                            <td className="p-3">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-black ${isWin ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-                                {isWin ? 'WIN' : 'LOSS'}
-                              </span>
-                            </td>
-                            <td className="p-3 mono text-gray-400">{t.date}</td>
-                            <td className="p-3 font-semibold text-gray-300">{t.account_type || 'Live'}</td>
-                            <td className="p-3 font-bold text-white mono">{t.symbol}</td>
-                            <td className="p-3"><span className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px]">{t.type}</span></td>
-                            <td className="p-3 text-gray-400">{t.setup}</td>
-                            <td className="p-3">
-                              {t.chart_url ? (
-                                <a href={t.chart_url} target="_blank" rel="noreferrer" className="text-emerald-400 underline font-semibold text-[10px]">
-                                  View Screenshot 🖼️
-                                </a>
-                              ) : (
-                                <span className="text-gray-600 text-[10px]">-</span>
-                              )}
-                            </td>
-                            <td className={`p-3 text-right font-bold mono ${isWin ? 'neon-green' : 'neon-red'}`}>
-                              ${t.pnl || '0.00'}
-                            </td>
-                            <td className="p-3 text-center">
-                              <button onClick={() => handleDeleteTrade(t.id)} className="text-xs text-red-400">🗑️</button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'calendar' && (
-            <div className="space-y-6">
-              <div className="glass-card p-5 rounded-xl flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))} className="text-gray-400 hover:text-white font-bold">&lt; PREV</button>
-                  <h2 className="text-lg font-black tracking-wider text-white uppercase">
-                    {calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                  </h2>
-                  <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))} className="text-gray-400 hover:text-white font-bold">NEXT &gt;</button>
-                </div>
-                <div className="text-xs text-gray-400 uppercase font-mono">
-                  Account Filter: <span className="text-emerald-400 font-bold">{selectedAccountFilter}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-7 gap-3">
-                <div className="glass-card p-3 rounded-lg border-l-4 border-l-emerald-400 col-span-1">
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold">Positive Weeks</p>
-                  <p className="text-xl font-extrabold neon-green mono mt-1">{greenWeeks} W</p>
-                </div>
-                <div className="glass-card p-3 rounded-lg border-l-4 border-l-red-500 col-span-1">
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold">Negative Weeks</p>
-                  <p className="text-xl font-extrabold neon-red mono mt-1">{redWeeks} W</p>
-                </div>
-
-                {weeks.map((wPnL, idx) => (
-                  <div key={idx} className={`glass-card p-3 rounded-lg border-l-2 ${wPnL >= 0 ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
-                    <p className="text-[10px] text-gray-400 uppercase">Week {idx + 1}</p>
-                    <p className={`text-sm font-bold mono mt-1 ${wPnL >= 0 ? 'neon-green' : 'neon-red'}`}>
-                      ${wPnL.toFixed(2)}
-                    </p>
+              {activeTab === 'trades' && (
+                <div className="space-y-6">
+                  <div className="card p-3 flex justify-between items-center">
+                    <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">📁 Data Portability</span>
+                    <div className="flex gap-3">
+                      <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-gray-200 text-xs font-bold px-3 py-1.5 rounded border border-cardBorder transition-all">
+                        📥 Import CSV
+                        <input type="file" accept=".csv" onChange={importCSV} className="hidden" />
+                      </label>
+                      <button onClick={exportCSV} className="bg-accentGreen/20 hover:bg-accentGreen/30 text-accentGreen border border-accentGreen/40 text-xs font-bold px-3 py-1.5 rounded transition-all">
+                        📤 Export CSV
+                      </button>
+                    </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="glass-card p-5 rounded-xl">
-                <div className="grid grid-cols-7 gap-2 mb-3 text-center text-xs font-bold text-gray-400 uppercase">
-                  <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
-                </div>
-                <div className="grid grid-cols-7 gap-2">
-                  {renderCalendarDays()}
-                </div>
-              </div>
-            </div>
-          )}
+                  <form onSubmit={handleSubmit} className="card p-5 space-y-4">
+                    <h3 className="text-xs font-extrabold tracking-widest text-accentGreen uppercase border-b border-cardBorder pb-2">⚡ Manual Execution Entry</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Date</label><input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} className="input-field" required /></div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Account</label>
+                        <select value={formData.accountType} onChange={e => setFormData({ ...formData, accountType: e.target.value })} className="input-field font-bold">
+                          <option value="Live">Live</option><option value="Funded">Funded</option><option value="Demo">Demo</option>
+                        </select>
+                      </div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Symbol</label><input type="text" value={formData.symbol} onChange={e => setFormData({ ...formData, symbol: e.target.value })} className="input-field uppercase" required /></div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Entry Price</label><input type="number" step="any" value={formData.entry} onChange={e => setFormData({ ...formData, entry: e.target.value })} className="input-field" /></div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Exit Price</label><input type="number" step="any" value={formData.exit} onChange={e => setFormData({ ...formData, exit: e.target.value })} className="input-field" /></div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Size</label><input type="number" step="any" value={formData.size} onChange={e => setFormData({ ...formData, size: e.target.value })} className="input-field" /></div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Direction</label>
+                        <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} className="input-field font-bold">
+                          <option value="BUY">BUY / LONG</option><option value="SELL">SELL / SHORT</option>
+                        </select>
+                      </div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Emotion</label>
+                        <select value={formData.emotion} onChange={e => setFormData({ ...formData, emotion: e.target.value })} className="input-field font-bold">
+                          {EMOTIONS.map(em => <option key={em} value={em}>{em}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Net Return ($)</label><input type="number" step="any" value={formData.pnl} onChange={e => setFormData({ ...formData, pnl: e.target.value })} className="input-field font-bold" placeholder="auto-calculated if blank" /></div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Setup Tag</label>
+                        <select value={formData.setup} onChange={e => setFormData({ ...formData, setup: e.target.value })} className="input-field">
+                          {SETUPS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 uppercase block mb-1">Screenshot (Ctrl+V or File)</label>
+                        <div className="flex gap-2">
+                          <input type="text" value={formData.chartUrl ? (formData.chartUrl.startsWith('data:') ? '✅ [PHOTO ATTACHED]' : formData.chartUrl) : ''} onChange={e => setFormData({ ...formData, chartUrl: e.target.value })} onPaste={handleImagePaste} className="input-field" placeholder="Click here & Ctrl+V screenshot" />
+                          <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-gray-300 px-3 py-2 rounded text-xs border border-cardBorder flex items-center justify-center font-bold">
+                            📷<input type="file" accept="image/*" onChange={handleImageFileUpload} className="hidden" />
+                          </label>
+                        </div>
+                      </div>
+                      <div className="flex items-end"><button type="submit" className="glow-btn text-black font-extrabold w-full py-2 rounded-lg text-xs tracking-wider uppercase">+ RECORD TRADE</button></div>
+                    </div>
+                  </form>
 
-          {activeTab === 'expenses' && (
-            <div className="space-y-6">
-              <form onSubmit={handleAddExpense} className="glass-card p-5 rounded-xl space-y-4">
-                <h3 className="text-xs font-extrabold tracking-widest text-emerald-400 uppercase">💳 Track Prop Firm / Account Expenses</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Date Purchased</label>
-                    <input type="date" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} className="input-field w-full" required />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Firm Name</label>
-                    <input type="text" value={expenseForm.firmName} onChange={e => setExpenseForm({...expenseForm, firmName: e.target.value})} className="input-field w-full" required />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Account Size</label>
-                    <input type="text" value={expenseForm.accountSize} onChange={e => setExpenseForm({...expenseForm, accountSize: e.target.value})} className="input-field w-full" placeholder="e.g. 50K / 100K" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-400 uppercase block mb-1">Cost ($)</label>
-                    <input type="number" step="any" value={expenseForm.cost} onChange={e => setExpenseForm({...expenseForm, cost: e.target.value})} className="input-field w-full" required />
-                  </div>
-                  <div className="flex items-end">
-                    <button type="submit" className="glow-btn text-black font-extrabold w-full py-2 rounded-lg text-xs uppercase">+ LOG EXPENSE</button>
-                  </div>
-                </div>
-              </form>
-
-              <div className="glass-card rounded-xl p-5">
-                <table className="w-full text-left text-xs text-gray-300">
-                  <thead className="border-b border-gray-800 text-gray-400 uppercase text-[10px]">
-                    <tr>
-                      <th className="p-3">Date</th>
-                      <th className="p-3">Firm Name</th>
-                      <th className="p-3">Account Size</th>
-                      <th className="p-3 text-right">Cost</th>
-                      <th className="p-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {expenses.length === 0 ? (
-                      <tr><td colSpan="5" className="p-6 text-center text-gray-500">No prop firm expenses logged yet.</td></tr>
-                    ) : (
-                      expenses.map(exp => (
-                        <tr key={exp.id} className="border-b border-gray-800/40">
-                          <td className="p-3 mono text-gray-400">{exp.date}</td>
-                          <td className="p-3 font-bold text-white">{exp.firm_name}</td>
-                          <td className="p-3 text-gray-300">{exp.account_size}</td>
-                          <td className="p-3 text-right font-bold mono neon-red">${Number(exp.cost).toFixed(2)}</td>
-                          <td className="p-3 text-center">
-                            <button onClick={() => handleDeleteExpense(exp.id)} className="text-xs text-red-400">🗑️</button>
-                          </td>
+                  <div className="card p-5 overflow-x-auto">
+                    <table className="w-full text-left text-xs text-gray-300 border-collapse">
+                      <thead className="border-b border-cardBorder text-gray-400 font-semibold uppercase text-[10px] tracking-wider">
+                        <tr>
+                          <th className="p-3">Result</th><th className="p-3">Date</th><th className="p-3">Account</th><th className="p-3">Symbol</th>
+                          <th className="p-3">Type</th><th className="p-3">Setup</th><th className="p-3">Emotion</th><th className="p-3">Chart</th>
+                          <th className="p-3 text-right">P&L</th><th className="p-3 text-center">Action</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'journal' && (
-            <div className="space-y-6">
-              <div className="glass-card p-4 rounded-xl flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <label className="text-xs font-bold text-gray-400 uppercase">Select Journal Date:</label>
-                  <input 
-                    type="date" 
-                    value={journalDate} 
-                    onChange={e => setJournalDate(e.target.value)} 
-                    className="input-field font-mono"
-                  />
+                      </thead>
+                      <tbody>
+                        {filteredTrades.length === 0 ? (
+                          <tr><td colSpan="10" className="p-8 text-center text-gray-500">No trades recorded for this account filter.</td></tr>
+                        ) : filteredTrades.map(t => {
+                          const isWin = Number(t.pnl) >= 0;
+                          return (
+                            <tr key={t.id} className="border-b border-cardBorder/40 hover:bg-white/[0.02]">
+                              <td className="p-3"><span className={`px-2 py-0.5 rounded text-[10px] font-black ${isWin ? 'bg-accentGreen/15 text-accentGreen' : 'bg-accentRed/15 text-accentRed'}`}>{isWin ? 'WIN' : 'LOSS'}</span></td>
+                              <td className="p-3 mono text-gray-400">{t.date}</td>
+                              <td className="p-3 font-semibold text-gray-300">{t.account_type || 'Live'}</td>
+                              <td className="p-3 font-bold text-white mono">{t.symbol}</td>
+                              <td className="p-3"><span className="px-2 py-0.5 rounded bg-slate-800 text-gray-300 text-[10px]">{t.type}</span></td>
+                              <td className="p-3 text-gray-400">{t.setup}</td>
+                              <td className="p-3 text-gray-400">{t.emotion || '-'}</td>
+                              <td className="p-3">{t.chart_url ? <a href={t.chart_url} target="_blank" rel="noreferrer" className="text-accentGreen underline font-semibold text-[10px]">View 🖼️</a> : <span className="text-gray-600 text-[10px]">-</span>}</td>
+                              <td className={`p-3 text-right font-bold mono ${isWin ? 'text-accentGreen' : 'text-accentRed'}`}>${t.pnl || '0.00'}</td>
+                              <td className="p-3 text-center"><button onClick={() => handleDeleteTrade(t.id)} className="text-xs text-accentRed">🗑️</button></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <button onClick={saveJournalEntry} className="glow-btn text-black font-extrabold px-4 py-2 rounded text-xs uppercase">
-                  💾 Save Entry
-                </button>
-              </div>
+              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="glass-card p-6 rounded-xl space-y-3">
-                  <h3 className="text-sm font-extrabold text-emerald-400 border-b border-gray-800 pb-2 flex items-center gap-2">
-                    <span>📈</span> Market Session & Setup Notes
-                  </h3>
-                  <textarea 
-                    value={marketNotes} 
-                    onChange={e => setMarketNotes(e.target.value)} 
-                    placeholder={`Record macro levels, news releases, session liquidity for ${journalDate}...`} 
-                    className="w-full h-80 bg-black/60 border border-gray-800 p-4 text-xs text-gray-200 rounded-lg focus:border-emerald-500 focus:outline-none resize-none font-mono"
-                  ></textarea>
+              {activeTab === 'calendar' && (
+                <div className="space-y-6">
+                  <div className="card p-5 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))} className="text-gray-400 hover:text-white font-bold">&lt; PREV</button>
+                      <h2 className="text-lg font-black tracking-wider text-white uppercase">{calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</h2>
+                      <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))} className="text-gray-400 hover:text-white font-bold">NEXT &gt;</button>
+                    </div>
+                    <div className="text-xs text-gray-400 uppercase font-mono">Account Filter: <span className="text-accentGreen font-bold">{selectedAccountFilter}</span></div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-7 gap-3">
+                    <div className="card p-3 border-l-4 border-l-accentGreen col-span-1"><p className="text-[10px] text-gray-400 uppercase font-semibold">Positive Weeks</p><p className="text-xl font-extrabold text-accentGreen mono mt-1">{greenWeeks} W</p></div>
+                    <div className="card p-3 border-l-4 border-l-accentRed col-span-1"><p className="text-[10px] text-gray-400 uppercase font-semibold">Negative Weeks</p><p className="text-xl font-extrabold text-accentRed mono mt-1">{redWeeks} W</p></div>
+                    {weeks.map((wPnL, idx) => (
+                      <div key={idx} className={`card p-3 border-l-2 ${wPnL >= 0 ? 'border-l-accentGreen' : 'border-l-accentRed'}`}>
+                        <p className="text-[10px] text-gray-400 uppercase">Week {idx + 1}</p>
+                        <p className={`text-sm font-bold mono mt-1 ${wPnL >= 0 ? 'text-accentGreen' : 'text-accentRed'}`}>${wPnL.toFixed(2)}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="card p-5">
+                    <div className="grid grid-cols-7 gap-2 mb-3 text-center text-xs font-bold text-gray-400 uppercase">
+                      <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">{renderCalendarDays()}</div>
+                  </div>
                 </div>
+              )}
 
-                <div className="glass-card p-6 rounded-xl space-y-3">
-                  <h3 className="text-sm font-extrabold text-purple-400 border-b border-gray-800 pb-2 flex items-center gap-2">
-                    <span>🧠</span> Mindset & Emotional State
-                  </h3>
-                  <textarea 
-                    value={personalNotes} 
-                    onChange={e => setPersonalNotes(e.target.value)} 
-                    placeholder={`Record fatigue, FOMO triggers, and mindset reflections for ${journalDate}...`} 
-                    className="w-full h-80 bg-black/60 border border-gray-800 p-4 text-xs text-gray-200 rounded-lg focus:border-purple-500 focus:outline-none resize-none font-mono"
-                  ></textarea>
+              {activeTab === 'expenses' && (
+                <div className="space-y-6">
+                  <form onSubmit={handleAddExpense} className="card p-5 space-y-4">
+                    <h3 className="text-xs font-extrabold tracking-widest text-accentGreen uppercase">💳 Track Prop Firm / Account Expenses</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Date Purchased</label><input type="date" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} className="input-field" required /></div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Firm Name</label><input type="text" value={expenseForm.firmName} onChange={e => setExpenseForm({ ...expenseForm, firmName: e.target.value })} className="input-field" required /></div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Account Size</label><input type="text" value={expenseForm.accountSize} onChange={e => setExpenseForm({ ...expenseForm, accountSize: e.target.value })} className="input-field" placeholder="e.g. 50K / 100K" /></div>
+                      <div><label className="text-[10px] text-gray-400 uppercase block mb-1">Cost ($)</label><input type="number" step="any" value={expenseForm.cost} onChange={e => setExpenseForm({ ...expenseForm, cost: e.target.value })} className="input-field" required /></div>
+                      <div className="flex items-end"><button type="submit" className="glow-btn text-black font-extrabold w-full py-2 rounded-lg text-xs uppercase">+ LOG EXPENSE</button></div>
+                    </div>
+                  </form>
+                  <div className="card p-5">
+                    <table className="w-full text-left text-xs text-gray-300">
+                      <thead className="border-b border-cardBorder text-gray-400 uppercase text-[10px]">
+                        <tr><th className="p-3">Date</th><th className="p-3">Firm Name</th><th className="p-3">Account Size</th><th className="p-3 text-right">Cost</th><th className="p-3 text-center">Action</th></tr>
+                      </thead>
+                      <tbody>
+                        {expenses.length === 0 ? (
+                          <tr><td colSpan="5" className="p-6 text-center text-gray-500">No prop firm expenses logged yet.</td></tr>
+                        ) : expenses.map(exp => (
+                          <tr key={exp.id} className="border-b border-cardBorder/40">
+                            <td className="p-3 mono text-gray-400">{exp.date}</td>
+                            <td className="p-3 font-bold text-white">{exp.firm_name}</td>
+                            <td className="p-3 text-gray-300">{exp.account_size}</td>
+                            <td className="p-3 text-right font-bold mono text-accentRed">${Number(exp.cost).toFixed(2)}</td>
+                            <td className="p-3 text-center"><button onClick={() => handleDeleteExpense(exp.id)} className="text-xs text-accentRed">🗑️</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
+              {activeTab === 'journal' && (
+                <div className="space-y-6">
+                  <div className="card p-4 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs font-bold text-gray-400 uppercase">Select Journal Date:</label>
+                      <input type="date" value={journalDate} onChange={e => setJournalDate(e.target.value)} className="input-field font-mono w-auto" />
+                    </div>
+                    <button onClick={saveJournalEntry} className="glow-btn text-black font-extrabold px-4 py-2 rounded text-xs uppercase">💾 Save Entry</button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="card p-6 space-y-3">
+                      <h3 className="text-sm font-extrabold text-accentGreen border-b border-cardBorder pb-2 flex items-center gap-2"><span>📈</span> Market Session & Setup Notes</h3>
+                      <textarea value={marketNotes} onChange={e => setMarketNotes(e.target.value)} placeholder={`Record macro levels, news releases, session liquidity for ${journalDate}...`} className="w-full h-80 bg-black/40 border border-cardBorder p-4 text-xs text-gray-200 rounded-lg focus:border-accentGreen focus:outline-none resize-none font-mono"></textarea>
+                    </div>
+                    <div className="card p-6 space-y-3">
+                      <h3 className="text-sm font-extrabold text-purple-400 border-b border-cardBorder pb-2 flex items-center gap-2"><span>🧠</span> Mindset & Emotional State</h3>
+                      <textarea value={personalNotes} onChange={e => setPersonalNotes(e.target.value)} placeholder={`Record fatigue, FOMO triggers, and mindset reflections for ${journalDate}...`} className="w-full h-80 bg-black/40 border border-cardBorder p-4 text-xs text-gray-200 rounded-lg focus:border-purple-500 focus:outline-none resize-none font-mono"></textarea>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </main>
+          </div>
         </div>
       );
     }
+
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
 </body>
