@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TRADEHUB // Performance Terminal</title>
   
+  <!-- App Logo / Favicon -->
+  <link rel="icon" type="image/png" href="./logo.png">
+  <link rel="apple-touch-icon" href="./logo.png">
+
   <!-- PWA Manifest & Service Worker -->
   <link rel="manifest" href="./manifest.json">
   <script>
@@ -137,7 +141,6 @@
         firmName: 'Apex Trader Funding', accountSize: '50K', cost: '', status: 'Active'
       });
 
-      // chart refs
       const miniDonutRef = useRef(null);
       const radarRef = useRef(null);
       const dailyPnlRef = useRef(null);
@@ -312,7 +315,6 @@
         reader.readAsText(file);
       };
 
-      // ---------- derived stats (all computed from real trade data) ----------
       const totalPnl = filteredTrades.reduce((acc, t) => acc + Number(t.pnl || 0), 0);
       const winsList = filteredTrades.filter(t => Number(t.pnl) > 0);
       const lossesList = filteredTrades.filter(t => Number(t.pnl) < 0);
@@ -409,7 +411,6 @@
         return { weeks, greenWeeks: weeks.filter(w => w > 0).length, redWeeks: weeks.filter(w => w < 0).length };
       };
 
-      // ---------- dashboard charts (real data) ----------
       useEffect(() => {
         if (activeTab !== 'dashboard' || !session) return;
         const destroy = (key) => { if (chartInstances.current[key]) { chartInstances.current[key].destroy(); delete chartInstances.current[key]; } };
@@ -510,10 +511,8 @@
         return (
           <div className="min-h-screen bg-bgDark flex items-center justify-center p-4">
             <div className="max-w-md w-full card p-8 space-y-6">
-              <div className="text-center space-y-2">
-                <div className="inline-block p-3 bg-accentGreen/10 rounded-full border border-accentGreen/30 mb-2">
-                  <span className="text-3xl">⚡</span>
-                </div>
+              <div className="text-center space-y-2 flex flex-col items-center">
+                <img src="./logo.png" alt="TradeHub Logo" className="w-20 h-20 rounded-2xl mb-2 border border-accentGreen/30 shadow-lg object-cover" />
                 <h1 className="text-3xl font-black tracking-wider text-white">TRADE<span className="text-accentGreen">HUB</span></h1>
                 <p className="text-xs text-gray-400 tracking-widest uppercase">Performance & Mindset Terminal</p>
               </div>
@@ -561,7 +560,7 @@
           <aside className="w-60 bg-cardDark/80 border-r border-cardBorder flex flex-col justify-between h-full overflow-y-auto shrink-0">
             <div className="p-4 space-y-6">
               <div className="flex items-center gap-3 px-2">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-500 via-indigo-500 to-accentGreen flex items-center justify-center font-bold text-white text-lg shadow-lg">⚡</div>
+                <img src="./logo.png" alt="Logo" className="w-9 h-9 rounded-lg border border-accentGreen/30 object-cover" />
                 <div>
                   <h1 className="font-extrabold text-lg tracking-wider text-white leading-tight">TRADE<span className="text-accentGreen">HUB</span></h1>
                   <p className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase">Performance Terminal</p>
@@ -609,7 +608,6 @@
 
               {activeTab === 'dashboard' && (
                 <div className="space-y-6">
-                  {/* KPI ROW */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="card p-4 flex items-center justify-between">
                       <div>
@@ -672,7 +670,6 @@
                     </div>
                   </div>
 
-                  {/* EDGE ROW */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="card p-4 flex items-center justify-between">
                       <div>
@@ -708,7 +705,6 @@
                     </div>
                   </div>
 
-                  {/* CHARTS ROW */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="card p-5 flex flex-col justify-between">
                       <h3 className="text-sm font-bold text-white">Trading Mastery Score</h3>
