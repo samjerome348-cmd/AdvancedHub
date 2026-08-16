@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TRADEHUB // Performance Terminal</title>
+  
+  <!-- PWA Manifest & Service Worker -->
+  <link rel="manifest" href="./manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -315,8 +324,6 @@
       const avgWin = winsList.length > 0 ? (totalWinDollar / winsList.length) : 0;
       const avgLoss = lossesList.length > 0 ? (totalLossDollar / lossesList.length) : 0;
       const avgWinLossRatio = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : (avgWin > 0 ? '∞' : '0.00');
-      const largestWin = winsList.length > 0 ? Math.max(...winsList.map(t => Number(t.pnl))) : 0;
-      const largestLoss = lossesList.length > 0 ? Math.min(...lossesList.map(t => Number(t.pnl))) : 0;
 
       const dayMap = {};
       filteredTrades.forEach(t => {
@@ -665,7 +672,7 @@
                     </div>
                   </div>
 
-                  {/* EDGE ROW (all real, derived from actual trades) */}
+                  {/* EDGE ROW */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="card p-4 flex items-center justify-between">
                       <div>
