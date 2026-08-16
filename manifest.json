@@ -13,13 +13,13 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "https://via.placeholder.com/192.png?text=192x192",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAAAXNSR0IArs4c6QAAAFVJREFUeF7twQENAAAAwqD3T20PBxQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC8A8M8AAHN59anAAAAAElFTkSuQmCC",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://via.placeholder.com/512.png?text=512x512",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAICCAYAAACm5y53AAAAAXNSR0IArs4c6QAAAFVJREFUeF7twQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD8DA7MAAQBv1lIAAAAASUVORK5CYII=",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -27,14 +27,14 @@
   ],
   "screenshots": [
     {
-      "src": "https://via.placeholder.com/1280x720.png?text=TradeHub+Dashboard",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABAAAAAMAAQMAAAC5J7iBAAAAA1BMVEUACNE+4024AAAAAXRSTlMAQObYZgAAAD1JREFUeF7twTEBAAAACIPwv28Wb2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgD6aAAAG4F2ZRAAAAAElFTkSuQmCC",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
       "label": "TradeHub Terminal Dashboard"
     },
     {
-      "src": "https://via.placeholder.com/640x1136.png?text=TradeHub+Mobile",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoAAAAAQCAYAAADgQ0b1AAAAAXNSR0IArs4c6QAAACVJREFUeF7twTEBAAAACIPwv28Wb2AAAAAAAAAAAAAAAAAAAABwDS4AAAFVvC87AAAAAElFTkSuQmCC",
       "sizes": "640x1136",
       "type": "image/png",
       "form_factor": "narrow",
