@@ -114,9 +114,10 @@
     function App() {
       const [session, setSession] = useState(null);
       const [loadingAuth, setLoadingAuth] = useState(true);
-      const [authMode, setAuthMode] = useState('login');
+      const [authMode, setAuthMode] = useState('login'); // 'login', 'signup', 'forgot', 'reset'
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
+      const [newPassword, setNewPassword] = useState('');
       const [authError, setAuthError] = useState('');
       const [authMsg, setAuthMsg] = useState('');
 
@@ -156,8 +157,13 @@
           if (session) { fetchUserTrades(session.user.id); fetchExpenses(session.user.id); }
           setLoadingAuth(false);
         });
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
           setSession(session);
+          if (event === 'PASSWORD_RECOVERY') {
+            setAuthMode('reset');
+            setAuthMsg('Enter your new password below.');
+          }
           if (session) { fetchUserTrades(session.user.id); fetchExpenses(session.user.id); }
           setLoadingAuth(false);
         });
@@ -229,7 +235,15 @@
           if (error) setAuthError(error.message); else setAuthMsg("Account created! You can now log in.");
         } else if (authMode === 'forgot') {
           const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-          if (error) setAuthError(error.message); else setAuthMsg("Password reset email sent!");
+          if (error) setAuthError(error.message); else setAuthMsg("Password reset email sent! Check your inbox.");
+        } else if (authMode === 'reset') {
+          const { error } = await supabase.auth.updateUser({ password: newPassword });
+          if (error) setAuthError(error.message);
+          else {
+            setAuthMsg("Password updated successfully! You are now logged in.");
+            setAuthMode('login');
+            setNewPassword('');
+          }
         }
       };
 
@@ -508,7 +522,7 @@
         );
       }
 
-      if (!session) {
+      if (!session && authMode !== 'reset') {
         return (
           <div className="min-h-screen bg-bgDark flex items-center justify-center p-4">
             <div className="max-w-md w-full card p-8 space-y-6">
@@ -518,14 +532,16 @@
                 <p className="text-xs text-gray-400 tracking-widest uppercase">Performance & Mindset Terminal</p>
               </div>
               <form onSubmit={handleAuth} className="space-y-4">
-                <div>
-                  <label className="text-xs text-gray-400 font-semibold block mb-1">TRADER EMAIL</label>
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="input-field py-2.5" placeholder="trader@terminal.com" required />
-                </div>
-                {authMode !== 'forgot' && (
+                {authMode !== 'reset' && (
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold block mb-1">TRADER EMAIL</label>
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="input-field py-2.5" placeholder="trader@terminal.com" required />
+                  </div>
+                )}
+                {(authMode === 'login' || authMode === 'signup') && (
                   <div>
                     <label className="text-xs text-gray-400 font-semibold block mb-1">PASSWORD</label>
-                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="input-field py-2.5" placeholder="••••••••••••" required={authMode !== 'forgot'} />
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="input-field py-2.5" placeholder="••••••••••••" required />
                   </div>
                 )}
                 {authError && <p className="text-xs text-accentRed font-mono bg-accentRed/10 p-2 rounded border border-accentRed/20">{authError}</p>}
@@ -548,6 +564,31 @@
                   </>
                 )}
               </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (authMode === 'reset') {
+        return (
+          <div className="min-h-screen bg-bgDark flex items-center justify-center p-4">
+            <div className="max-w-md w-full card p-8 space-y-6">
+              <div className="text-center space-y-2 flex flex-col items-center">
+                <img src="./logo.png" alt="TradeHub Logo" className="w-20 h-20 rounded-2xl mb-2 border border-accentGreen/30 shadow-lg object-cover" />
+                <h1 className="text-3xl font-black tracking-wider text-white">RESET <span className="text-accentGreen">PASSWORD</span></h1>
+                <p className="text-xs text-gray-400 tracking-widest uppercase">Enter your new credential</p>
+              </div>
+              <form onSubmit={handleAuth} className="space-y-4">
+                <div>
+                  <label className="text-xs text-gray-400 font-semibold block mb-1">NEW PASSWORD</label>
+                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="input-field py-2.5" placeholder="••••••••••••" required />
+                </div>
+                {authError && <p className="text-xs text-accentRed font-mono bg-accentRed/10 p-2 rounded border border-accentRed/20">{authError}</p>}
+                {authMsg && <p className="text-xs text-accentGreen font-mono bg-accentGreen/10 p-2 rounded border border-accentGreen/20">{authMsg}</p>}
+                <button type="submit" className="glow-btn text-black font-extrabold py-3 rounded-lg text-xs tracking-wider uppercase mt-2 w-full">
+                  UPDATE PASSWORD
+                </button>
+              </form>
             </div>
           </div>
         );
